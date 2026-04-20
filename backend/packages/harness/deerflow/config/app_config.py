@@ -1,9 +1,12 @@
 import logging
 import os
+import re
+import time
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Self
 
+import httpx
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,6 +18,7 @@ from deerflow.config.extensions_config import ExtensionsConfig
 from deerflow.config.guardrails_config import GuardrailsConfig, load_guardrails_config_from_dict
 from deerflow.config.memory_config import MemoryConfig, load_memory_config_from_dict
 from deerflow.config.model_config import ModelConfig
+from deerflow.config.model_list_endpoint_config import ModelListEndpointConfig
 from deerflow.config.sandbox_config import SandboxConfig
 from deerflow.config.skill_evolution_config import SkillEvolutionConfig
 from deerflow.config.skills_config import SkillsConfig
@@ -45,12 +49,131 @@ def _default_config_candidates() -> tuple[Path, ...]:
     return (backend_dir / "config.yaml", repo_root / "config.yaml")
 
 
+def _slugify_model_name(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip().lower())
+    slug = re.sub(r"-{2,}", "-", slug).strip("-")
+    return slug or "model"
+
+
+def _titleize_slug(value: str) -> str:
+    return " ".join(part.capitalize() for part in value.replace("_", "-").split("-") if part)
+
+
+def _display_name_for_discovered_model(model_name: str) -> str:
+    parts = [part for part in model_name.split("/") if part]
+    if len(parts) == 3 and parts[0].lower() == "kamiwaza":
+        return f"{parts[2]} ({parts[1]})"
+    if len(parts) == 2 and parts[0].lower() == "kamiwaza":
+        return f"Kamiwaza {_titleize_slug(parts[1])}"
+    return model_name
+
+
+def _extract_model_ids_from_payload(payload: Any) -> list[str]:
+    if isinstance(payload, dict):
+        data = payload.get("data")
+        if isinstance(data, list):
+            payload = data
+        else:
+            payload = [payload]
+    if not isinstance(payload, list):
+        return []
+
+    model_ids: list[str] = []
+    seen: set[str] = set()
+    for item in payload:
+        model_id = None
+        if isinstance(item, dict):
+            candidate = item.get("id") or item.get("name")
+            if candidate:
+                model_id = str(candidate).strip()
+        elif item:
+            model_id = str(item).strip()
+        if not model_id or model_id in seen:
+            continue
+        seen.add(model_id)
+        model_ids.append(model_id)
+    return model_ids
+
+
+def _make_unique_model_name(candidate: str, used_names: set[str]) -> str:
+    if candidate not in used_names:
+        used_names.add(candidate)
+        return candidate
+    suffix = 2
+    while True:
+        next_name = f"{candidate}-{suffix}"
+        if next_name not in used_names:
+            used_names.add(next_name)
+            return next_name
+        suffix += 1
+
+
+def _build_model_list_endpoint_model_configs(endpoint_config: ModelListEndpointConfig) -> list[ModelConfig]:
+    if not endpoint_config.enabled:
+        return []
+    if not endpoint_config.is_configured():
+        logger.warning("model_list_endpoint is missing required fields; expected url/use/base_url")
+        return []
+
+    try:
+        with httpx.Client(timeout=httpx.Timeout(endpoint_config.timeout_sec), follow_redirects=True) as client:
+            response = client.get(endpoint_config.url, headers=endpoint_config.headers)
+            response.raise_for_status()
+            payload = response.json()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("model_list_endpoint fetch failed for %s: %s", endpoint_config.url, exc)
+        return []
+
+    model_ids = _extract_model_ids_from_payload(payload)
+    if not model_ids:
+        return []
+
+    used_names: set[str] = set()
+    discovered: list[ModelConfig] = []
+    for model_id in model_ids:
+        name = _make_unique_model_name(_slugify_model_name(model_id), used_names)
+        defaults = endpoint_config.invocation_defaults()
+        defaults.setdefault("display_name", _display_name_for_discovered_model(model_id))
+        defaults.setdefault("description", f"Discovered from {endpoint_config.url}")
+        discovered.append(
+            ModelConfig.model_validate(
+                {
+                    **defaults,
+                    "name": name,
+                    "model": model_id,
+                }
+            )
+        )
+    return discovered
+
+
+def _merge_model_configs(manual_models: list[ModelConfig], discovered_models: list[ModelConfig]) -> list[ModelConfig]:
+    merged = list(manual_models)
+    seen_model_ids = {model.model for model in manual_models}
+    seen_names = {model.name for model in manual_models}
+
+    for model in discovered_models:
+        if model.model in seen_model_ids:
+            continue
+        if model.name in seen_names:
+            model = model.model_copy(update={"name": _make_unique_model_name(model.name, seen_names)})
+        else:
+            seen_names.add(model.name)
+        merged.append(model)
+        seen_model_ids.add(model.model)
+    return merged
+
+
 class AppConfig(BaseModel):
     """Config for the DeerFlow application"""
 
     log_level: str = Field(default="info", description="Logging level for deerflow modules (debug/info/warning/error)")
     token_usage: TokenUsageConfig = Field(default_factory=TokenUsageConfig, description="Token usage tracking configuration")
     models: list[ModelConfig] = Field(default_factory=list, description="Available models")
+    model_list_endpoint: ModelListEndpointConfig | None = Field(
+        default=None,
+        description="Optional OpenAI-compatible endpoint used to discover additional models",
+    )
     sandbox: SandboxConfig = Field(description="Sandbox configuration")
     tools: list[ToolConfig] = Field(default_factory=list, description="Available tools")
     tool_groups: list[ToolGroupConfig] = Field(default_factory=list, description="Available tool groups")
@@ -163,6 +286,9 @@ class AppConfig(BaseModel):
         config_data["extensions"] = extensions_config.model_dump()
 
         result = cls.model_validate(config_data)
+        if result.model_list_endpoint is not None:
+            discovered_models = _build_model_list_endpoint_model_configs(result.model_list_endpoint)
+            result.models = _merge_model_configs(result.models, discovered_models)
         return result
 
     @classmethod
@@ -272,6 +398,7 @@ class AppConfig(BaseModel):
 _app_config: AppConfig | None = None
 _app_config_path: Path | None = None
 _app_config_mtime: float | None = None
+_app_config_dynamic_refresh_deadline: float | None = None
 _app_config_is_custom = False
 _current_app_config: ContextVar[AppConfig | None] = ContextVar("deerflow_current_app_config", default=None)
 _current_app_config_stack: ContextVar[tuple[AppConfig | None, ...]] = ContextVar("deerflow_current_app_config_stack", default=())
@@ -287,12 +414,17 @@ def _get_config_mtime(config_path: Path) -> float | None:
 
 def _load_and_cache_app_config(config_path: str | None = None) -> AppConfig:
     """Load config from disk and refresh cache metadata."""
-    global _app_config, _app_config_path, _app_config_mtime, _app_config_is_custom
+    global _app_config, _app_config_path, _app_config_mtime, _app_config_dynamic_refresh_deadline, _app_config_is_custom
 
     resolved_path = AppConfig.resolve_config_path(config_path)
     _app_config = AppConfig.from_file(str(resolved_path))
     _app_config_path = resolved_path
     _app_config_mtime = _get_config_mtime(resolved_path)
+    endpoint_config = _app_config.model_list_endpoint
+    if endpoint_config and endpoint_config.is_configured():
+        _app_config_dynamic_refresh_deadline = time.monotonic() + endpoint_config.cache_ttl_sec
+    else:
+        _app_config_dynamic_refresh_deadline = None
     _app_config_is_custom = False
     return _app_config
 
@@ -305,7 +437,7 @@ def get_app_config() -> AppConfig:
     `reload_app_config()` to force a reload, or `reset_app_config()` to clear
     the cache.
     """
-    global _app_config, _app_config_path, _app_config_mtime
+    global _app_config, _app_config_path, _app_config_mtime, _app_config_dynamic_refresh_deadline
 
     runtime_override = _current_app_config.get()
     if runtime_override is not None:
@@ -316,8 +448,9 @@ def get_app_config() -> AppConfig:
 
     resolved_path = AppConfig.resolve_config_path()
     current_mtime = _get_config_mtime(resolved_path)
+    dynamic_refresh_due = _app_config_dynamic_refresh_deadline is not None and time.monotonic() >= _app_config_dynamic_refresh_deadline
 
-    should_reload = _app_config is None or _app_config_path != resolved_path or _app_config_mtime != current_mtime
+    should_reload = _app_config is None or _app_config_path != resolved_path or _app_config_mtime != current_mtime or dynamic_refresh_due
     if should_reload:
         if _app_config_path == resolved_path and _app_config_mtime is not None and current_mtime is not None and _app_config_mtime != current_mtime:
             logger.info(
@@ -325,6 +458,8 @@ def get_app_config() -> AppConfig:
                 _app_config_mtime,
                 current_mtime,
             )
+        elif dynamic_refresh_due:
+            logger.info("model_list_endpoint cache expired; reloading AppConfig")
         _load_and_cache_app_config(str(resolved_path))
     return _app_config
 
@@ -352,10 +487,11 @@ def reset_app_config() -> None:
     `get_app_config()` to reload from file. Useful for testing
     or when switching between different configurations.
     """
-    global _app_config, _app_config_path, _app_config_mtime, _app_config_is_custom
+    global _app_config, _app_config_path, _app_config_mtime, _app_config_dynamic_refresh_deadline, _app_config_is_custom
     _app_config = None
     _app_config_path = None
     _app_config_mtime = None
+    _app_config_dynamic_refresh_deadline = None
     _app_config_is_custom = False
 
 
@@ -367,10 +503,11 @@ def set_app_config(config: AppConfig) -> None:
     Args:
         config: The AppConfig instance to use.
     """
-    global _app_config, _app_config_path, _app_config_mtime, _app_config_is_custom
+    global _app_config, _app_config_path, _app_config_mtime, _app_config_dynamic_refresh_deadline, _app_config_is_custom
     _app_config = config
     _app_config_path = None
     _app_config_mtime = None
+    _app_config_dynamic_refresh_deadline = None
     _app_config_is_custom = True
 
 

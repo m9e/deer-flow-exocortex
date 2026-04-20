@@ -39,6 +39,11 @@ _BUSY_PATTERNS = (
     "稍后重试",
     "请稍后重试",
 )
+_LOOP_RETRY_PATTERNS = (
+    "event loop is closed",
+    "attached to a different loop",
+    "cannot schedule new futures after shutdown",
+)
 _QUOTA_PATTERNS = (
     "insufficient_quota",
     "quota",
@@ -163,6 +168,8 @@ class LLMErrorHandlingMiddleware(AgentMiddleware[AgentState]):
         }:
             return True, "transient"
         if status_code in _RETRIABLE_STATUS_CODES:
+            return True, "transient"
+        if _matches_any(lowered, _LOOP_RETRY_PATTERNS):
             return True, "transient"
         if _matches_any(lowered, _BUSY_PATTERNS):
             return True, "busy"

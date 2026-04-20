@@ -242,6 +242,53 @@ def test_task_tool_returns_timed_out_message(monkeypatch):
     assert events[-1]["error"] == "timeout"
 
 
+def test_task_tool_retries_failed_attempt_before_completion(monkeypatch):
+    config = _make_subagent_config()
+    events = []
+    cleanup_calls = []
+    execute_prompts = []
+
+    class DummyExecutor:
+        def __init__(self, **kwargs):
+            pass
+
+        def execute_async(self, prompt, task_id=None):
+            execute_prompts.append(prompt)
+            return task_id
+
+    responses = iter(
+        [
+            _make_result(FakeSubagentStatus.FAILED, error="temporary failure"),
+            _make_result(FakeSubagentStatus.COMPLETED, result="all done"),
+        ]
+    )
+
+    monkeypatch.setattr(task_tool_module, "SubagentStatus", FakeSubagentStatus)
+    monkeypatch.setattr(task_tool_module, "SubagentExecutor", DummyExecutor)
+    monkeypatch.setattr(task_tool_module, "get_subagent_config", lambda _: config)
+    monkeypatch.setattr(task_tool_module, "get_skills_prompt_section", lambda: "")
+    monkeypatch.setattr(task_tool_module, "get_background_task_result", lambda _: next(responses))
+    monkeypatch.setattr(task_tool_module, "get_stream_writer", lambda: events.append)
+    monkeypatch.setattr(task_tool_module.asyncio, "sleep", _no_sleep)
+    monkeypatch.setattr("deerflow.tools.get_available_tools", lambda **kwargs: [])
+    monkeypatch.setattr(task_tool_module, "cleanup_background_task", lambda task_id: cleanup_calls.append(task_id))
+
+    output = _run_task_tool(
+        runtime=_make_runtime(),
+        description="执行任务",
+        prompt="collect diagnostics",
+        subagent_type="general-purpose",
+        tool_call_id="tc-retry-success",
+    )
+
+    assert output == "Task Succeeded. Result: all done"
+    assert [event["type"] for event in events] == ["task_started", "task_retrying", "task_completed"]
+    assert cleanup_calls == ["tc-retry-success", "tc-retry-success"]
+    assert execute_prompts[0] == "collect diagnostics"
+    assert "Retry attempt 2 of 2" in execute_prompts[1]
+    assert "temporary failure" in execute_prompts[1]
+
+
 def test_task_tool_polling_safety_timeout(monkeypatch):
     config = _make_subagent_config()
     # Keep max_poll_count small for test speed: (1 + 60) // 5 = 12
@@ -355,7 +402,7 @@ def test_cleanup_called_on_failed(monkeypatch):
     )
 
     assert output == "Task failed. Error: error"
-    assert cleanup_calls == ["tc-cleanup-failed"]
+    assert cleanup_calls == ["tc-cleanup-failed", "tc-cleanup-failed"]
 
 
 def test_cleanup_called_on_timed_out(monkeypatch):
@@ -395,7 +442,7 @@ def test_cleanup_called_on_timed_out(monkeypatch):
     )
 
     assert output == "Task timed out. Error: timeout"
-    assert cleanup_calls == ["tc-cleanup-timedout"]
+    assert cleanup_calls == ["tc-cleanup-timedout", "tc-cleanup-timedout"]
 
 
 def test_cleanup_not_called_on_polling_safety_timeout(monkeypatch):

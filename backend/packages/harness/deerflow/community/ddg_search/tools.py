@@ -4,9 +4,13 @@ Web Search Tool - Search the web using DuckDuckGo (no API key required).
 
 import json
 import logging
+from typing import Annotated
 
-from langchain.tools import tool
+from langchain.tools import InjectedToolArg, ToolRuntime, tool
+from langgraph.typing import ContextT
 
+from deerflow.agents.thread_state import ThreadState
+from deerflow.community.web_cache import cache_web_result, get_cached_web_result
 from deerflow.config import get_app_config
 
 logger = logging.getLogger(__name__)
@@ -56,6 +60,7 @@ def _search_text(
 def web_search_tool(
     query: str,
     max_results: int = 5,
+    runtime: Annotated[ToolRuntime[ContextT, ThreadState] | None, InjectedToolArg] = None,
 ) -> str:
     """Search the web for information. Use this tool to find current information, news, articles, and facts from the internet.
 
@@ -63,6 +68,10 @@ def web_search_tool(
         query: Search keywords describing what you want to find. Be specific for better results.
         max_results: Maximum number of results to return. Default is 5.
     """
+    cached_result = get_cached_web_result(runtime, provider="ddg_search", tool_name="web_search", value=query)
+    if cached_result is not None:
+        return cached_result
+
     config = get_app_config().get_tool_config("web_search")
 
     # Override max_results from config if set
@@ -92,4 +101,6 @@ def web_search_tool(
         "results": normalized_results,
     }
 
-    return json.dumps(output, indent=2, ensure_ascii=False)
+    serialized = json.dumps(output, indent=2, ensure_ascii=False)
+    cache_web_result(runtime, provider="ddg_search", tool_name="web_search", value=query, result=serialized)
+    return serialized

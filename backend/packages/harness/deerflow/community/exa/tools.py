@@ -1,8 +1,12 @@
 import json
+from typing import Annotated
 
 from exa_py import Exa
-from langchain.tools import tool
+from langchain.tools import InjectedToolArg, ToolRuntime, tool
+from langgraph.typing import ContextT
 
+from deerflow.agents.thread_state import ThreadState
+from deerflow.community.web_cache import cache_web_result, get_cached_web_result
 from deerflow.config import get_app_config
 
 
@@ -15,12 +19,19 @@ def _get_exa_client(tool_name: str = "web_search") -> Exa:
 
 
 @tool("web_search", parse_docstring=True)
-def web_search_tool(query: str) -> str:
+def web_search_tool(
+    query: str,
+    runtime: Annotated[ToolRuntime[ContextT, ThreadState] | None, InjectedToolArg] = None,
+) -> str:
     """Search the web.
 
     Args:
         query: The query to search for.
     """
+    cached_result = get_cached_web_result(runtime, provider="exa", tool_name="web_search", value=query)
+    if cached_result is not None:
+        return cached_result
+
     try:
         config = get_app_config().get_tool_config("web_search")
         max_results = 5
@@ -48,13 +59,17 @@ def web_search_tool(query: str) -> str:
             for result in res.results
         ]
         json_results = json.dumps(normalized_results, indent=2, ensure_ascii=False)
+        cache_web_result(runtime, provider="exa", tool_name="web_search", value=query, result=json_results)
         return json_results
     except Exception as e:
         return f"Error: {str(e)}"
 
 
 @tool("web_fetch", parse_docstring=True)
-def web_fetch_tool(url: str) -> str:
+def web_fetch_tool(
+    url: str,
+    runtime: Annotated[ToolRuntime[ContextT, ThreadState] | None, InjectedToolArg] = None,
+) -> str:
     """Fetch the contents of a web page at a given URL.
     Only fetch EXACT URLs that have been provided directly by the user or have been returned in results from the web_search and web_fetch tools.
     This tool can NOT access content that requires authentication, such as private Google Docs or pages behind login walls.
@@ -64,6 +79,10 @@ def web_fetch_tool(url: str) -> str:
     Args:
         url: The URL to fetch the contents of.
     """
+    cached_result = get_cached_web_result(runtime, provider="exa", tool_name="web_fetch", value=url)
+    if cached_result is not None:
+        return cached_result
+
     try:
         client = _get_exa_client("web_fetch")
         res = client.get_contents([url], text={"max_characters": 4096})
@@ -72,7 +91,9 @@ def web_fetch_tool(url: str) -> str:
             result = res.results[0]
             title = result.title or "Untitled"
             text = result.text or ""
-            return f"# {title}\n\n{text[:4096]}"
+            content = f"# {title}\n\n{text[:4096]}"
+            cache_web_result(runtime, provider="exa", tool_name="web_fetch", value=url, result=content)
+            return content
         else:
             return "Error: No results found"
     except Exception as e:

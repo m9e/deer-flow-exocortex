@@ -17,6 +17,17 @@ from deerflow.subagents import SubagentExecutor, get_available_subagent_names, g
 from deerflow.subagents.executor import SubagentStatus, cleanup_background_task, get_background_task_result, request_cancel_background_task
 
 logger = logging.getLogger(__name__)
+MAX_SUBAGENT_ATTEMPTS = 2
+
+
+def _build_retry_prompt(original_prompt: str, error: str, attempt: int) -> str:
+    """Preserve task intent while telling the retry to reuse prior work."""
+    return (
+        f"{original_prompt}\n\n"
+        f"Retry attempt {attempt} of {MAX_SUBAGENT_ATTEMPTS}.\n"
+        f"The previous attempt ended with this error: {error}\n"
+        "Continue the same task. Reuse any files, notes, and cached web results already created in this thread instead of starting over."
+    )
 
 
 @tool("task", parse_docstring=True)
@@ -126,6 +137,7 @@ async def task_tool(
     task_id = executor.execute_async(prompt, task_id=tool_call_id)
 
     # Poll for task completion in backend (removes need for LLM to poll)
+    attempt = 1
     poll_count = 0
     last_status = None
     last_message_count = 0  # Track how many AI messages we've already sent
@@ -178,6 +190,27 @@ async def task_tool(
                 cleanup_background_task(task_id)
                 return f"Task Succeeded. Result: {result.result}"
             elif result.status == SubagentStatus.FAILED:
+                if attempt < MAX_SUBAGENT_ATTEMPTS:
+                    retry_error = result.error or "Unknown subagent failure"
+                    writer(
+                        {
+                            "type": "task_retrying",
+                            "task_id": task_id,
+                            "attempt": attempt + 1,
+                            "max_attempts": MAX_SUBAGENT_ATTEMPTS,
+                            "error": retry_error,
+                        }
+                    )
+                    logger.warning(
+                        f"[trace={trace_id}] Task {task_id} failed on attempt {attempt}/{MAX_SUBAGENT_ATTEMPTS}: {retry_error}. Retrying."
+                    )
+                    cleanup_background_task(task_id)
+                    attempt += 1
+                    task_id = executor.execute_async(_build_retry_prompt(prompt, retry_error, attempt), task_id=tool_call_id)
+                    poll_count = 0
+                    last_status = None
+                    last_message_count = 0
+                    continue
                 writer({"type": "task_failed", "task_id": task_id, "error": result.error})
                 logger.error(f"[trace={trace_id}] Task {task_id} failed: {result.error}")
                 cleanup_background_task(task_id)
@@ -188,6 +221,27 @@ async def task_tool(
                 cleanup_background_task(task_id)
                 return "Task cancelled by user."
             elif result.status == SubagentStatus.TIMED_OUT:
+                if attempt < MAX_SUBAGENT_ATTEMPTS:
+                    retry_error = result.error or "Subagent timed out"
+                    writer(
+                        {
+                            "type": "task_retrying",
+                            "task_id": task_id,
+                            "attempt": attempt + 1,
+                            "max_attempts": MAX_SUBAGENT_ATTEMPTS,
+                            "error": retry_error,
+                        }
+                    )
+                    logger.warning(
+                        f"[trace={trace_id}] Task {task_id} timed out on attempt {attempt}/{MAX_SUBAGENT_ATTEMPTS}: {retry_error}. Retrying."
+                    )
+                    cleanup_background_task(task_id)
+                    attempt += 1
+                    task_id = executor.execute_async(_build_retry_prompt(prompt, retry_error, attempt), task_id=tool_call_id)
+                    poll_count = 0
+                    last_status = None
+                    last_message_count = 0
+                    continue
                 writer({"type": "task_timed_out", "task_id": task_id, "error": result.error})
                 logger.warning(f"[trace={trace_id}] Task {task_id} timed out: {result.error}")
                 cleanup_background_task(task_id)

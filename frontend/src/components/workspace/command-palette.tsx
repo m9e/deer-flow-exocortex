@@ -36,6 +36,15 @@ export function CommandPalette() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isMac, setIsMac] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Radix components use an internal id counter (useId). Rendering them during
+  // SSR can produce ids that disagree with the post-hydration client render,
+  // which surfaces as the `radix-_R_…` hydration mismatch. Defer to the client
+  // to skip the mismatch entirely.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleNewChat = useCallback(() => {
     router.push("/workspace/chats/new");
@@ -69,6 +78,12 @@ export function CommandPalette() {
   }, []);
   const metaKey = isMac ? "⌘" : "Ctrl+";
   const shiftKey = isMac ? "⇧" : "Shift+";
+
+  // Keyboard shortcuts (above) register on every render, including SSR-noop;
+  // only the Radix-backed dialogs need to be client-only.
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <>

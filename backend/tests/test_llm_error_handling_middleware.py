@@ -117,6 +117,43 @@ def test_sync_model_call_uses_retry_after_header(monkeypatch: pytest.MonkeyPatch
     assert waits == [2.0]
 
 
+def test_sync_model_call_retries_event_loop_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    middleware = _build_middleware(retry_max_attempts=2, retry_base_delay_ms=10, retry_cap_delay_ms=10)
+    waits: list[float] = []
+    attempts = 0
+
+    def fake_sleep(delay: float) -> None:
+        waits.append(delay)
+
+    def handler(_request) -> AIMessage:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise FakeError("Event loop is closed")
+        return AIMessage(content="ok")
+
+    monkeypatch.setattr("time.sleep", fake_sleep)
+
+    result = middleware.wrap_model_call(SimpleNamespace(), handler)
+
+    assert isinstance(result, AIMessage)
+    assert result.content == "ok"
+    assert waits == [0.01]
+
+
+def test_async_model_call_hides_event_loop_closed_after_retry_exhaustion() -> None:
+    middleware = _build_middleware(retry_max_attempts=1)
+
+    async def handler(_request) -> AIMessage:
+        raise FakeError("Event loop is closed")
+
+    result = asyncio.run(middleware.awrap_model_call(SimpleNamespace(), handler))
+
+    assert isinstance(result, AIMessage)
+    assert "temporarily unavailable" in str(result.content)
+    assert "Event loop is closed" not in str(result.content)
+
+
 def test_sync_model_call_propagates_graph_bubble_up() -> None:
     middleware = _build_middleware()
 

@@ -34,6 +34,22 @@ token_usage:
 # ============================================================================
 # Configure available LLM models for the agent to use
 
+# Optional: dynamically discover additional models from an OpenAI-compatible
+# /v1/models endpoint and merge them with the manual list below.
+#
+# model_list_endpoint:
+#   enabled: true
+#   url: http://host.docker.internal:4000/v1/models
+#   cache_ttl_sec: 30
+#   use: langchain_openai:ChatOpenAI
+#   base_url: http://host.docker.internal:4000/v1
+#   api_key: "n/a"
+#   timeout: 1200.0
+#   max_retries: 2
+#   supports_thinking: true
+#   supports_vision: false
+#   supports_reasoning_effort: false
+
 models:
   # Example: Volcengine (Doubao) model
   # - name: doubao-seed-1.8
