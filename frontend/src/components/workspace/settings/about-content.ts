@@ -1,50 +1,51 @@
 /**
- * About DeerFlow markdown content. Inlined to avoid raw-loader dependency
+ * About markdown content. Inlined to avoid raw-loader dependency
  * (Turbopack cannot resolve raw-loader for .md imports).
  */
-export const aboutMarkdown = `# 🦌 [About DeerFlow 2.0](https://github.com/bytedance/deer-flow)
+export const aboutMarkdown = `# About Kamiwaza Flow
 
-> **From Open Source, Back to Open Source**
+Kamiwaza Flow packages the DeerFlow agent runtime as a Kamiwaza-native App Garden workspace.
 
-DeerFlow (**D**eep **E**xploration and **E**fficient **R**esearch **Flow**) is an open-source **super agent harness** that orchestrates **sub-agents**, **memory**, and **sandboxes** to do almost anything — powered by **extensible skills**.
+It keeps the long-running agent loop, memory, tools, skills, artifacts, and subagents, then wires them into local Kamiwaza models and platform services.
 
 ---
 
-## 🚀 Core Features
+## Core Features
 
-* **Skills & Tools**: With built-in and extensible skills and tools, DeerFlow can do almost anything.
-* **Sub-Agents**: Sub-Agents help the main agent to do the tasks that are too complex to be done by the main agent.
+* **Kamiwaza Models & Tools**: Local platform models and tools appear directly in the agent workspace.
+* **Skills & Tools**: Built-in and extensible skills provide task-specific capabilities.
+* **Subagents**: Subagents help split larger tasks into scoped pieces of work.
 * **Sandbox & File System**: Safely execute code and manipulate files in the sandbox.
 * **Context Engineering**: Isolated sub-agent context, summarization to keep the context window sharp.
 * **Long-Term Memory**: Keep recording the user's profile, top of mind, and conversation history.
 
 ---
 
-## 🌟 GitHub Repository
+## Upstream
 
-![Star History Chart](https://api.star-history.com/svg?repos=bytedance/deer-flow&type=Date)
+Kamiwaza Flow is based on the open source DeerFlow project: [github.com/bytedance/deer-flow](https://github.com/bytedance/deer-flow)
 
-Explore DeerFlow on GitHub: [github.com/bytedance/deer-flow](https://github.com/bytedance/deer-flow)
+## Kamiwaza
 
-## 🌐 Official Website
+Visit Kamiwaza: [kamiwaza.ai](https://kamiwaza.ai/)
 
-Visit the official website of DeerFlow: [deerflow.tech](https://deerflow.tech/)
+## Support
 
-## 📧 Support
+Join us on Discord: [discord.com/invite/cVGBS5rD2U](https://discord.com/invite/cVGBS5rD2U)
 
-If you have any questions or need help, please contact us at [support@deerflow.tech](mailto:support@deerflow.tech).
-
----
-
-## 📜 License
-
-DeerFlow is proudly open source and distributed under the **MIT License**.
+Commercial support: [kamiwaza.ai/support](https://www.kamiwaza.ai/support)
 
 ---
 
-## 🙌 Acknowledgments
+## License
 
-We extend our heartfelt gratitude to the open source projects and contributors who have made DeerFlow a reality. We truly stand on the shoulders of giants.
+DeerFlow is open source and distributed under the **MIT License**.
+
+---
+
+## Acknowledgments
+
+Kamiwaza Flow builds on substantial open source work from the DeerFlow community and the projects below.
 
 ### Core Frameworks
 - **[LangChain](https://github.com/langchain-ai/langchain)**: A phenomenal framework that powers our LLM interactions and chains.
@@ -55,13 +56,13 @@ We extend our heartfelt gratitude to the open source projects and contributors w
 - **[Shadcn](https://ui.shadcn.com/)**: Minimalistic components that power our UI.
 - **[SToneX](https://github.com/stonexer)**: For his invaluable contribution to token-by-token visual effects.
 
-These outstanding projects form the backbone of DeerFlow and exemplify the transformative power of open source collaboration.
+These projects form the backbone of the app.
 
 ### Special Thanks
-Finally, we want to express our heartfelt gratitude to the core authors of DeerFlow 1.0 and 2.0:
+Special thanks to the core authors of DeerFlow 1.0 and 2.0:
 
 - **[Daniel Walnut](https://github.com/hetaoBackend/)**
 - **[Henry Li](https://github.com/magiccube/)**
 
-Without their vision, passion and dedication, \`DeerFlow\` would not be what it is today.
+Without their work, this Kamiwaza-native version would not exist.
 `;

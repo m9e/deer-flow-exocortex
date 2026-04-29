@@ -53,19 +53,22 @@ export function AgentCard({ agent }: AgentCardProps) {
 
   return (
     <>
-      <Card className="group flex flex-col transition-shadow hover:shadow-md">
+      <Card className="group flex flex-col gap-4 rounded-[var(--kz-r)] border-[var(--kz-border-soft)] bg-[var(--kz-card)] py-4 shadow-[var(--kz-shadow-card)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-[var(--kz-border-emerald)] hover:shadow-[var(--kz-shadow-hero)]">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--kz-primary)] to-[var(--kz-flux-3)] text-[#07140f] shadow-[var(--kz-shadow-primary)]">
                 <BotIcon className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <CardTitle className="truncate text-base">
+                <CardTitle className="truncate text-base text-[var(--kz-text)]">
                   {agent.name}
                 </CardTitle>
                 {agent.model && (
-                  <Badge variant="secondary" className="mt-0.5 text-xs">
+                  <Badge
+                    variant="secondary"
+                    className="mt-1 max-w-full truncate rounded-full border border-[var(--kz-border-soft)] bg-[rgba(255,255,255,0.04)] font-mono text-[10px] text-[var(--kz-text-3)]"
+                  >
                     {agent.model}
                   </Badge>
                 )}
@@ -73,7 +76,7 @@ export function AgentCard({ agent }: AgentCardProps) {
             </div>
           </div>
           {agent.description && (
-            <CardDescription className="mt-2 line-clamp-2 text-sm">
+            <CardDescription className="mt-2 line-clamp-2 text-sm leading-5 text-[var(--kz-text-3)]">
               {agent.description}
             </CardDescription>
           )}
@@ -83,7 +86,11 @@ export function AgentCard({ agent }: AgentCardProps) {
           <CardContent className="pt-0 pb-3">
             <div className="flex flex-wrap gap-1">
               {agent.tool_groups.map((group) => (
-                <Badge key={group} variant="outline" className="text-xs">
+                <Badge
+                  key={group}
+                  variant="outline"
+                  className="rounded-full border-[var(--kz-border-soft)] bg-[var(--kz-well)] text-xs text-[var(--kz-text-3)]"
+                >
                   {group}
                 </Badge>
               ))}
@@ -92,7 +99,11 @@ export function AgentCard({ agent }: AgentCardProps) {
         )}
 
         <CardFooter className="mt-auto flex items-center justify-between gap-2 pt-3">
-          <Button size="sm" className="flex-1" onClick={handleChat}>
+          <Button
+            size="sm"
+            className="flex-1 rounded-full shadow-[var(--kz-shadow-primary)]"
+            onClick={handleChat}
+          >
             <MessageSquareIcon className="mr-1.5 h-3.5 w-3.5" />
             {t.agents.chat}
           </Button>
@@ -100,7 +111,7 @@ export function AgentCard({ agent }: AgentCardProps) {
             <Button
               size="icon"
               variant="ghost"
-              className="text-destructive hover:text-destructive h-8 w-8 shrink-0"
+              className="h-8 w-8 shrink-0 rounded-full text-[var(--kz-text-4)] hover:bg-[rgba(239,68,68,0.12)] hover:text-[var(--kz-error)]"
               onClick={() => setDeleteOpen(true)}
               title={t.agents.delete}
             >

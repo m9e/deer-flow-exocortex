@@ -9,10 +9,12 @@ router = APIRouter(prefix="/api", tags=["models"])
 class ModelResponse(BaseModel):
     """Response model for model information."""
 
+    id: str = Field(..., description="Stable model identifier")
     name: str = Field(..., description="Unique identifier for the model")
     model: str = Field(..., description="Actual provider model identifier")
     display_name: str | None = Field(None, description="Human-readable name")
     description: str | None = Field(None, description="Model description")
+    provider: str | None = Field(default=None, description="Optional integration provider")
     supports_thinking: bool = Field(default=False, description="Whether model supports thinking mode")
     supports_reasoning_effort: bool = Field(default=False, description="Whether model supports reasoning effort")
 
@@ -75,10 +77,12 @@ async def list_models() -> ModelsListResponse:
     config = get_app_config()
     models = [
         ModelResponse(
+            id=model.name,
             name=model.name,
             model=model.model,
             display_name=model.display_name,
             description=model.description,
+            provider=model.provider,
             supports_thinking=model.supports_thinking,
             supports_reasoning_effort=model.supports_reasoning_effort,
         )
@@ -124,10 +128,12 @@ async def get_model(model_name: str) -> ModelResponse:
         raise HTTPException(status_code=404, detail=f"Model '{model_name}' not found")
 
     return ModelResponse(
+        id=model.name,
         name=model.name,
         model=model.model,
         display_name=model.display_name,
         description=model.description,
+        provider=model.provider,
         supports_thinking=model.supports_thinking,
         supports_reasoning_effort=model.supports_reasoning_effort,
     )

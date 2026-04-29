@@ -1,0 +1,54 @@
+{
+  "name": "Kamiwaza Flow",
+  "version": "0.1.0",
+  "kamiwaza_version": ">=0.10.0",
+  "source_type": "kamiwaza",
+  "visibility": "public",
+  "description": "Chat based multi-agent workflows, with many skills.",
+  "category": "productivity",
+  "author": "Kamiwaza",
+  "license": "MIT",
+  "homepage": "https://github.com/bytedance/deer-flow",
+  "risk_tier": 1,
+  "verified": false,
+  "strip_path_prefix": false,
+  "env_defaults": {
+    "BETTER_AUTH_SECRET": "deer-flow-appgarden-local-secret",
+    "KAMIWAZA_API_URL": "{kamiwaza_origin}/api",
+    "KAMIWAZA_API_KEY": "",
+    "KAMIWAZA_PUBLIC_API_URL": "{kamiwaza_origin}/api",
+    "KAMIWAZA_TOOL_DISCOVERY_ENABLED": "true",
+    "KAMIWAZA_TOOL_DISCOVERY_ENDPOINT_MODE": "auto",
+    "KAMIWAZA_VERIFY_SSL": "false",
+    "MCP_VERIFY_SSL": "false",
+    "GATEWAY_WORKERS": "1",
+    "LANGGRAPH_ALLOW_BLOCKING": "1",
+    "LANGGRAPH_JOBS_PER_WORKER": "4"
+  },
+  "env_metadata": {
+    "KAMIWAZA_TOOL_DISCOVERY_ENABLED": {
+      "type": "select",
+      "options": ["true", "false"],
+      "label": "Discover ToolShed MCP tools",
+      "description": "When enabled, Kamiwaza Flow discovers running Kamiwaza tool extensions and exposes them as MCP tools."
+    },
+    "KAMIWAZA_TOOL_DISCOVERY_ENDPOINT_MODE": {
+      "type": "select",
+      "options": ["auto", "internal", "external"],
+      "label": "Tool endpoint mode",
+      "description": "Choose internal cluster endpoints, external ToolShed routes, or automatic selection."
+    },
+    "KAMIWAZA_VERIFY_SSL": {
+      "type": "select",
+      "options": ["false", "true"],
+      "label": "Verify Kamiwaza SSL",
+      "description": "Set false for the local self-signed Kamiwaza certificate."
+    },
+    "KAMIWAZA_API_KEY": {
+      "type": "password",
+      "label": "Kamiwaza API key",
+      "description": "Optional bearer token used for server-side ToolShed MCP discovery."
+    }
+  },
+  "preview_image": "images/deer-flow-preview.png"
+}

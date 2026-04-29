@@ -1,36 +1,36 @@
-# 🦌 [About DeerFlow 2.0](https://github.com/bytedance/deer-flow)
+# About Kamiwaza Flow
 
-> **From Open Source, Back to Open Source**
+Kamiwaza Flow packages the DeerFlow agent runtime as a Kamiwaza-native App Garden workspace.
 
-**DeerFlow** (**D**eep **E**xploration and **E**fficient **R**esearch **Flow**) is a community-driven SuperAgent harness that researches, codes, and creates.
-With the help of sandboxes, memories, tools and skills, it handles
-different levels of tasks that could take minutes to hours.
+It keeps the long-running agent loop, memory, tools, skills, artifacts, and subagents, then wires them into local Kamiwaza models and platform services.
 
 ---
 
-## 🌟 GitHub Repository
+## Upstream
 
-Explore DeerFlow on GitHub: [github.com/bytedance/deer-flow](https://github.com/bytedance/deer-flow)
+Kamiwaza Flow is based on the open source DeerFlow project: [github.com/bytedance/deer-flow](https://github.com/bytedance/deer-flow)
 
-## 🌐 Official Website
+## Kamiwaza
 
-Visit the official website of DeerFlow: [deerflow.tech](https://deerflow.tech/)
+Visit Kamiwaza: [kamiwaza.ai](https://kamiwaza.ai/)
 
-## 📧 Support
+## Support
 
-If you have any questions or need help, please contact us at [support@deerflow.tech](mailto:support@deerflow.tech).
+Join us on Discord: [discord.com/invite/cVGBS5rD2U](https://discord.com/invite/cVGBS5rD2U)
 
----
-
-## 📜 License
-
-DeerFlow is proudly open source and distributed under the **MIT License**.
+Commercial support: [kamiwaza.ai/support](https://www.kamiwaza.ai/support)
 
 ---
 
-## 🙌 Acknowledgments
+## License
 
-We extend our heartfelt gratitude to the open source projects and contributors who have made DeerFlow a reality. We truly stand on the shoulders of giants.
+DeerFlow is open source and distributed under the **MIT License**.
+
+---
+
+## Acknowledgments
+
+Kamiwaza Flow builds on substantial open source work from the DeerFlow community and the projects below.
 
 ### Core Frameworks
 
@@ -43,13 +43,13 @@ We extend our heartfelt gratitude to the open source projects and contributors w
 - **[Shadcn](https://ui.shadcn.com/)**: Minimalistic components that power our UI.
 - **[SToneX](https://github.com/stonexer)**: For his invaluable contribution to token-by-token visual effects.
 
-These outstanding projects form the backbone of DeerFlow and exemplify the transformative power of open source collaboration.
+These projects form the backbone of the app.
 
 ### Special Thanks
 
-Finally, we want to express our heartfelt gratitude to the core authors of DeerFlow 1.0 and 2.0:
+Special thanks to the core authors of DeerFlow 1.0 and 2.0:
 
 - **[Daniel Walnut](https://github.com/hetaoBackend/)**
 - **[Henry Li](https://github.com/magiccube/)**
 
-Without their vision, passion and dedication, `DeerFlow` would not be what it is today.
+Without their work, this Kamiwaza-native version would not exist.

@@ -28,6 +28,7 @@ import { useNotification } from "@/core/notification/hooks";
 import { useThreadSettings } from "@/core/settings";
 import { useThreadStream } from "@/core/threads/hooks";
 import { textOfMessage } from "@/core/threads/utils";
+import { withAppBasePath } from "@/core/config";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +59,9 @@ export default function AgentChatPage() {
       history.replaceState(
         null,
         "",
-        `/workspace/agents/${agent_name}/chats/${createdThreadId}`,
+        withAppBasePath(
+          `/workspace/agents/${agent_name}/chats/${createdThreadId}`,
+        ),
       );
     },
     onFinish: (state) => {
@@ -155,9 +158,7 @@ export default function AgentChatPage() {
                 className={cn(
                   "relative w-full",
                   isNewThread && "-translate-y-[calc(50vh-96px)]",
-                  isNewThread
-                    ? "max-w-(--container-width-sm)"
-                    : "max-w-(--container-width-md)",
+                  "max-w-(--container-width-md)",
                 )}
               >
                 <div className="absolute -top-4 right-0 left-0 z-0">

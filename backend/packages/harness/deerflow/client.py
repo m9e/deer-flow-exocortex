@@ -40,6 +40,7 @@ from deerflow.config.app_config import get_app_config, reload_app_config
 from deerflow.config.extensions_config import ExtensionsConfig, SkillStateConfig, get_extensions_config, reload_extensions_config
 from deerflow.config.paths import get_paths
 from deerflow.models import create_chat_model
+from deerflow.runtime.serialization import strip_internal_system_reminders
 from deerflow.skills.installer import install_skill_from_archive
 from deerflow.uploads.manager import (
     claim_unique_filename,
@@ -258,6 +259,12 @@ class DeerFlowClient:
         return get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled)
 
     @staticmethod
+    def _optional_str_attr(obj: Any, name: str) -> str | None:
+        """Return a string attribute, treating mock/missing values as unset."""
+        value = getattr(obj, name, None)
+        return value if isinstance(value, str) else None
+
+    @staticmethod
     def _serialize_tool_calls(tool_calls) -> list[dict]:
         """Reshape LangChain tool_calls into the wire format used in events."""
         return [{"name": tc["name"], "args": tc["args"], "id": tc.get("id")} for tc in tool_calls]
@@ -300,26 +307,61 @@ class DeerFlowClient:
     @staticmethod
     def _serialize_message(msg) -> dict:
         """Serialize a LangChain message to a plain dict for values events."""
+        name = getattr(msg, "name", None)
+        additional_kwargs = getattr(msg, "additional_kwargs", None)
+
+        def attach_common(data: dict[str, Any]) -> dict[str, Any]:
+            if name:
+                data["name"] = name
+            if isinstance(additional_kwargs, dict) and additional_kwargs:
+                data["additional_kwargs"] = additional_kwargs
+            return data
+
         if isinstance(msg, AIMessage):
-            d: dict[str, Any] = {"type": "ai", "content": msg.content, "id": getattr(msg, "id", None)}
+            d: dict[str, Any] = {
+                "type": "ai",
+                "content": DeerFlowClient._sanitize_content(msg.content),
+                "id": getattr(msg, "id", None),
+            }
             if msg.tool_calls:
                 d["tool_calls"] = DeerFlowClient._serialize_tool_calls(msg.tool_calls)
             if getattr(msg, "usage_metadata", None):
                 d["usage_metadata"] = msg.usage_metadata
-            return d
+            return attach_common(d)
         if isinstance(msg, ToolMessage):
-            return {
-                "type": "tool",
-                "content": DeerFlowClient._extract_text(msg.content),
-                "name": getattr(msg, "name", None),
-                "tool_call_id": getattr(msg, "tool_call_id", None),
-                "id": getattr(msg, "id", None),
-            }
+            return attach_common(
+                {
+                    "type": "tool",
+                    "content": DeerFlowClient._extract_text(msg.content),
+                    "name": getattr(msg, "name", None),
+                    "tool_call_id": getattr(msg, "tool_call_id", None),
+                    "id": getattr(msg, "id", None),
+                }
+            )
         if isinstance(msg, HumanMessage):
-            return {"type": "human", "content": msg.content, "id": getattr(msg, "id", None)}
+            return attach_common({"type": "human", "content": DeerFlowClient._sanitize_content(msg.content), "id": getattr(msg, "id", None)})
         if isinstance(msg, SystemMessage):
-            return {"type": "system", "content": msg.content, "id": getattr(msg, "id", None)}
-        return {"type": "unknown", "content": str(msg), "id": getattr(msg, "id", None)}
+            return attach_common({"type": "system", "content": DeerFlowClient._sanitize_content(msg.content), "id": getattr(msg, "id", None)})
+        return attach_common({"type": "unknown", "content": strip_internal_system_reminders(str(msg)), "id": getattr(msg, "id", None)})
+
+    @staticmethod
+    def _sanitize_content(content):
+        if isinstance(content, str):
+            return strip_internal_system_reminders(content)
+        if isinstance(content, list):
+            sanitized = []
+            for block in content:
+                if isinstance(block, str):
+                    sanitized.append(strip_internal_system_reminders(block))
+                elif isinstance(block, dict):
+                    sanitized_block = dict(block)
+                    if isinstance(sanitized_block.get("text"), str):
+                        sanitized_block["text"] = strip_internal_system_reminders(sanitized_block["text"])
+                    sanitized.append(sanitized_block)
+                else:
+                    sanitized.append(block)
+            return sanitized
+        return content
 
     @staticmethod
     def _extract_text(content) -> str:
@@ -331,11 +373,12 @@ class DeerFlowClient:
         readability.
         """
         if isinstance(content, str):
-            return content
+            return strip_internal_system_reminders(content)
         if isinstance(content, list):
             if content and all(isinstance(block, str) for block in content):
                 chunk_like = len(content) > 1 and all(isinstance(block, str) and len(block) <= 20 and any(ch in block for ch in '{}[]":,') for block in content)
-                return "".join(content) if chunk_like else "\n".join(content)
+                text = "".join(content) if chunk_like else "\n".join(content)
+                return strip_internal_system_reminders(text)
 
             pieces: list[str] = []
             pending_str_parts: list[str] = []
@@ -352,11 +395,11 @@ class DeerFlowClient:
                     flush_pending_str_parts()
                     text_val = block.get("text")
                     if isinstance(text_val, str):
-                        pieces.append(text_val)
+                        pieces.append(strip_internal_system_reminders(text_val))
 
             flush_pending_str_parts()
-            return "\n".join(pieces) if pieces else ""
-        return str(content)
+            return strip_internal_system_reminders("\n".join(pieces)) if pieces else ""
+        return strip_internal_system_reminders(str(content))
 
     # ------------------------------------------------------------------
     # Public API — threads
@@ -729,10 +772,12 @@ class DeerFlowClient:
         return {
             "models": [
                 {
+                    "id": getattr(model, "name", None),
                     "name": model.name,
                     "model": getattr(model, "model", None),
                     "display_name": getattr(model, "display_name", None),
                     "description": getattr(model, "description", None),
+                    "provider": self._optional_str_attr(model, "provider"),
                     "supports_thinking": getattr(model, "supports_thinking", False),
                     "supports_reasoning_effort": getattr(model, "supports_reasoning_effort", False),
                 }
@@ -802,10 +847,12 @@ class DeerFlowClient:
         if model is None:
             return None
         return {
+            "id": getattr(model, "name", None),
             "name": model.name,
             "model": getattr(model, "model", None),
             "display_name": getattr(model, "display_name", None),
             "description": getattr(model, "description", None),
+            "provider": self._optional_str_attr(model, "provider"),
             "supports_thinking": getattr(model, "supports_thinking", False),
             "supports_reasoning_effort": getattr(model, "supports_reasoning_effort", False),
         }

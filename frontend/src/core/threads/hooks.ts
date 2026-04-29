@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
 import { getAPIClient } from "../api";
-import { getBackendBaseURL } from "../config";
+import { getAppStorageKey, getBackendBaseURL } from "../config";
 import { useI18n } from "../i18n/hooks";
 import type { FileInMessage } from "../messages/utils";
 import type { LocalSettings } from "../settings";
@@ -87,26 +87,28 @@ function getRunMetadataStorage(): {
 } {
   return {
     getItem(key) {
+      const storageKey = getAppStorageKey(key);
       const normalized = normalizeStoredRunId(
-        window.sessionStorage.getItem(key),
+        window.sessionStorage.getItem(storageKey),
       );
       if (normalized) {
-        window.sessionStorage.setItem(key, normalized);
+        window.sessionStorage.setItem(storageKey, normalized);
         return normalized;
       }
-      window.sessionStorage.removeItem(key);
+      window.sessionStorage.removeItem(storageKey);
       return null;
     },
     setItem(key, value) {
+      const storageKey = getAppStorageKey(key);
       const normalized = normalizeStoredRunId(value);
       if (normalized) {
-        window.sessionStorage.setItem(key, normalized);
+        window.sessionStorage.setItem(storageKey, normalized);
         return;
       }
-      window.sessionStorage.removeItem(key);
+      window.sessionStorage.removeItem(storageKey);
     },
     removeItem(key) {
-      window.sessionStorage.removeItem(key);
+      window.sessionStorage.removeItem(getAppStorageKey(key));
     },
   };
 }

@@ -1,14 +1,24 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { withAppBasePath } from "@/core/config";
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
-import { AuroraText } from "../ui/aurora-text";
-
 let waved = false;
+
+function timeOfDayGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) {
+    return "Good morning";
+  }
+  if (hour < 18) {
+    return "Good afternoon";
+  }
+  return "Good evening";
+}
 
 export function Welcome({
   className,
@@ -19,37 +29,74 @@ export function Welcome({
 }) {
   const { t } = useI18n();
   const searchParams = useSearchParams();
-  const isUltra = useMemo(() => mode === "ultra", [mode]);
-  const colors = useMemo(() => {
-    if (isUltra) {
-      return ["#efefbb", "#e9c665", "#e3a812"];
-    }
-    return ["var(--color-foreground)"];
-  }, [isUltra]);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+
   useEffect(() => {
     waved = true;
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(withAppBasePath("/api/session"), {
+      cache: "no-store",
+      credentials: "same-origin",
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
+        return (await response.json()) as {
+          user?: { displayName?: string | null };
+        };
+      })
+      .then((session) => {
+        const name = session?.user?.displayName?.trim();
+        if (!cancelled && name) {
+          setDisplayName(name);
+        }
+      })
+      .catch(() => {
+        // Header personalization is opportunistic; keep the generic greeting.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const greeting = useMemo(() => {
+    if (!displayName) {
+      return t.welcome.greeting;
+    }
+    return `${timeOfDayGreeting()}, ${displayName}.`;
+  }, [displayName, t.welcome.greeting]);
+
   return (
     <div
       className={cn(
-        "mx-auto flex w-full flex-col items-center justify-center gap-2 px-8 py-4 text-center",
+        "mx-auto flex w-full flex-col items-center justify-center gap-3 px-8 py-5 text-center",
         className,
       )}
     >
-      <div className="text-2xl font-bold">
+      <div className="text-2xl font-semibold tracking-normal md:text-3xl">
         {searchParams.get("mode") === "skill" ? (
-          `✨ ${t.welcome.createYourOwnSkill} ✨`
+          <span className="aurora-text">{t.welcome.createYourOwnSkill}</span>
         ) : (
           <div className="flex items-center gap-2">
-            <div className={cn("inline-block", !waved ? "animate-wave" : "")}>
-              {isUltra ? "🚀" : "👋"}
-            </div>
-            <AuroraText colors={colors}>{t.welcome.greeting}</AuroraText>
+            <div
+              className={cn(
+                "dot-live inline-block size-2.5",
+                !waved ? "animate-wave" : "",
+                mode === "ultra" ? "shadow-[var(--kz-shadow-primary)]" : "",
+              )}
+            />
+            <span className="text-[var(--kz-text)]">{greeting}</span>
           </div>
         )}
       </div>
       {searchParams.get("mode") === "skill" ? (
-        <div className="text-muted-foreground text-sm">
+        <div className="max-w-xl text-sm leading-6 text-[var(--kz-text-3)]">
           {t.welcome.createYourOwnSkillDescription.includes("\n") ? (
             <pre className="font-sans whitespace-pre">
               {t.welcome.createYourOwnSkillDescription}
@@ -59,7 +106,7 @@ export function Welcome({
           )}
         </div>
       ) : (
-        <div className="text-muted-foreground text-sm">
+        <div className="max-w-xl text-sm leading-6 text-[var(--kz-text-3)]">
           {t.welcome.description.includes("\n") ? (
             <pre className="font-sans whitespace-pre">
               {t.welcome.description}

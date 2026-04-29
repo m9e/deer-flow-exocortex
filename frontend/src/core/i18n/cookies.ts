@@ -3,6 +3,8 @@
  * Works on both client and server side
  */
 
+import { getAppCookiePath } from "@/core/config";
+
 const LOCALE_COOKIE_NAME = "locale";
 
 /**
@@ -33,7 +35,7 @@ export function setLocaleInCookie(locale: string): void {
 
   // Set cookie with 1 year expiration
   const maxAge = 365 * 24 * 60 * 60; // 1 year in seconds
-  document.cookie = `${LOCALE_COOKIE_NAME}=${encodeURIComponent(locale)}; max-age=${maxAge}; path=/; SameSite=Lax`;
+  document.cookie = `${LOCALE_COOKIE_NAME}=${encodeURIComponent(locale)}; max-age=${maxAge}; path=${getAppCookiePath()}; SameSite=Lax`;
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { AgentThreadContext } from "../threads";
+import { getAppStorageKey } from "../config";
 
 export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
   notification: {
@@ -51,8 +52,16 @@ function mergeLocalSettings(settings?: Partial<LocalSettings>): LocalSettings {
   };
 }
 
+export function getLocalSettingsStorageKey(): string {
+  return getAppStorageKey(LOCAL_SETTINGS_KEY);
+}
+
+export function getThreadModelStorageKeyPrefix(): string {
+  return getAppStorageKey(THREAD_MODEL_KEY_PREFIX);
+}
+
 function getThreadModelStorageKey(threadId: string): string {
-  return `${THREAD_MODEL_KEY_PREFIX}${threadId}`;
+  return getAppStorageKey(`${THREAD_MODEL_KEY_PREFIX}${threadId}`);
 }
 
 export function getThreadModelName(threadId: string): string | undefined {
@@ -97,7 +106,7 @@ export function getLocalSettings(): LocalSettings {
   if (!isBrowser()) {
     return DEFAULT_LOCAL_SETTINGS;
   }
-  const json = localStorage.getItem(LOCAL_SETTINGS_KEY);
+  const json = localStorage.getItem(getLocalSettingsStorageKey());
   try {
     if (json) {
       const settings = JSON.parse(json) as Partial<LocalSettings>;
@@ -111,5 +120,5 @@ export function saveLocalSettings(settings: LocalSettings) {
   if (!isBrowser()) {
     return;
   }
-  localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(settings));
+  localStorage.setItem(getLocalSettingsStorageKey(), JSON.stringify(settings));
 }

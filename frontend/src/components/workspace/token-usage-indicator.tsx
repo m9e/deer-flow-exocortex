@@ -38,7 +38,7 @@ export function TokenUsageIndicator({
         <button
           type="button"
           className={cn(
-            "text-muted-foreground bg-background/70 flex cursor-default items-center gap-1.5 rounded-full border px-2 py-1 text-xs",
+            "flex cursor-default items-center gap-1.5 rounded-full border border-[var(--kz-border-soft)] bg-[var(--kz-well)] px-2 py-1 text-xs text-[var(--kz-text-3)]",
             !usage && "opacity-60",
             className,
           )}

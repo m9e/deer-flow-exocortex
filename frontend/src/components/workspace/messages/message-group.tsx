@@ -79,13 +79,16 @@ export function MessageGroup({
   const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
   return (
     <ChainOfThought
-      className={cn("w-full gap-2 rounded-lg border p-0.5", className)}
+      className={cn(
+        "w-full gap-2 rounded-xl border border-[var(--kz-border-soft)] bg-[rgba(31,41,55,0.4)] p-0.5 shadow-[var(--kz-shadow-card)]",
+        className,
+      )}
       open={true}
     >
       {aboveLastToolCallSteps.length > 0 && (
         <Button
           key="above"
-          className="w-full items-start justify-start text-left"
+          className="w-full items-start justify-start rounded-xl text-left hover:bg-[var(--kz-primary-soft)]"
           variant="ghost"
           onClick={() => setShowAbove(!showAbove)}
         >
@@ -143,7 +146,7 @@ export function MessageGroup({
         <>
           <Button
             key={lastReasoningStep.id}
-            className="w-full items-start justify-start text-left"
+            className="w-full items-start justify-start rounded-xl text-left hover:bg-[var(--kz-primary-soft)]"
             variant="ghost"
             onClick={() => setShowLastThinking(!showLastThinking)}
           >
@@ -156,7 +159,7 @@ export function MessageGroup({
               <div>
                 <ChevronUp
                   className={cn(
-                    "text-muted-foreground size-4",
+                    "size-4 text-[var(--kz-text-4)]",
                     showLastThinking ? "" : "rotate-180",
                   )}
                 />

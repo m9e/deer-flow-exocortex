@@ -92,7 +92,7 @@ export const ChainOfThoughtHeader = memo(
       <Collapsible onOpenChange={setIsOpen} open={isOpen}>
         <CollapsibleTrigger
           className={cn(
-            "text-muted-foreground hover:text-foreground flex w-full items-center gap-2 text-sm transition-colors",
+            "flex w-full items-center gap-2 text-sm text-[var(--kz-text-3)] transition-colors hover:text-[var(--kz-text)]",
             className,
           )}
           {...props}
@@ -131,9 +131,9 @@ export const ChainOfThoughtStep = memo(
     ...props
   }: ChainOfThoughtStepProps) => {
     const statusStyles = {
-      complete: "text-muted-foreground",
-      active: "text-foreground",
-      pending: "text-muted-foreground/50",
+      complete: "text-[var(--kz-text-3)]",
+      active: "text-[var(--kz-text)]",
+      pending: "text-[var(--kz-text-4)]",
     };
 
     return (
@@ -148,12 +148,12 @@ export const ChainOfThoughtStep = memo(
       >
         <div className="relative mt-0.5">
           {isValidElement(Icon) ? Icon : <Icon className="size-4" />}
-          <div className="bg-border absolute top-7 bottom-0 left-1/2 -mx-px w-px" />
+          <div className="absolute top-7 bottom-0 left-1/2 -mx-px w-px bg-[var(--kz-border-soft)]" />
         </div>
         <div className="flex-1 space-y-2 overflow-hidden">
           <div>{label}</div>
           {description && (
-            <div className="text-muted-foreground text-xs">{description}</div>
+            <div className="text-xs text-[var(--kz-text-4)]">{description}</div>
           )}
           {children}
         </div>
@@ -181,7 +181,10 @@ export type ChainOfThoughtSearchResultProps = ComponentProps<typeof Badge>;
 export const ChainOfThoughtSearchResult = memo(
   ({ className, children, ...props }: ChainOfThoughtSearchResultProps) => (
     <Badge
-      className={cn("gap-1 px-2 py-0.5 text-xs font-normal", className)}
+      className={cn(
+        "gap-1 rounded-full border-[var(--kz-border-soft)] bg-[var(--kz-well)] px-2 py-0.5 text-xs font-normal text-[var(--kz-text-3)]",
+        className,
+      )}
       variant="secondary"
       {...props}
     >
@@ -203,7 +206,7 @@ export const ChainOfThoughtContent = memo(
         <CollapsibleContent
           className={cn(
             "mt-2 space-y-3",
-            "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground data-[state=closed]:animate-out data-[state=open]:animate-in outline-none",
+            "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=open]:animate-in text-[var(--kz-text-2)] outline-none",
             className,
           )}
           {...props}

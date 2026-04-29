@@ -14,19 +14,19 @@ export function StreamingIndicator({
       <div
         className={cn(
           dotSize,
-          "animate-bouncing bg-muted-foreground rounded-full opacity-100",
+          "animate-bouncing rounded-full bg-[var(--kz-primary)] opacity-100",
         )}
       />
       <div
         className={cn(
           dotSize,
-          "animate-bouncing bg-muted-foreground rounded-full opacity-100 [animation-delay:0.2s]",
+          "animate-bouncing rounded-full bg-[var(--kz-flux-2)] opacity-100 [animation-delay:0.2s]",
         )}
       />
       <div
         className={cn(
           dotSize,
-          "animate-bouncing bg-muted-foreground rounded-full opacity-100 [animation-delay:0.4s]",
+          "animate-bouncing rounded-full bg-[var(--kz-flux-3)] opacity-100 [animation-delay:0.4s]",
         )}
       />
     </div>

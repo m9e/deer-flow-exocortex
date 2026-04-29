@@ -183,7 +183,7 @@ export function MessageList({
               results.push(
                 <div
                   key="subtask-count"
-                  className="text-muted-foreground pt-2 text-sm font-normal"
+                  className="pt-2 text-sm font-normal text-[var(--kz-text-3)]"
                 >
                   {t.subtasks.executing(tasks.size)}
                 </div>,

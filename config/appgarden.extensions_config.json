@@ -1,0 +1,9 @@
+{
+  "mcpServers": {},
+  "skills": {
+    "image-generation": { "enabled": false },
+    "video-generation": { "enabled": false },
+    "podcast-generation": { "enabled": false },
+    "ppt-generation": { "enabled": false }
+  }
+}

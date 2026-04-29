@@ -157,3 +157,27 @@ def test_serialize_dispatcher_default_mode():
 
     result = serialize(_FakePydanticV1())
     assert result == {"key": "v1"}
+
+
+def test_serialize_strips_internal_system_reminder_from_message_content():
+    from langchain_core.messages import AIMessage
+
+    from deerflow.runtime.serialization import serialize_lc_object
+
+    msg = AIMessage(
+        content=("Visible text.\n\n<system_reminder>Never show this instruction.</system_reminder>\n\nMore visible text."),
+        id="ai-1",
+    )
+
+    result = serialize_lc_object(msg)
+
+    assert result["content"] == "Visible text.\n\n\n\nMore visible text."
+    assert "system_reminder" not in result["content"]
+
+
+def test_serialize_strips_unclosed_internal_system_reminder_tail():
+    from deerflow.runtime.serialization import strip_internal_system_reminders
+
+    result = strip_internal_system_reminders("Visible\n<system_reminder>internal")
+
+    assert result == "Visible"

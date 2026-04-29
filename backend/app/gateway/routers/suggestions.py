@@ -1,5 +1,7 @@
+import asyncio
 import json
 import logging
+import os
 
 from fastapi import APIRouter
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -10,6 +12,8 @@ from deerflow.models import create_chat_model
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["suggestions"])
+
+DEFAULT_SUGGESTIONS_TIMEOUT_SECONDS = 20.0
 
 
 class SuggestionMessage(BaseModel):
@@ -25,6 +29,22 @@ class SuggestionsRequest(BaseModel):
 
 class SuggestionsResponse(BaseModel):
     suggestions: list[str] = Field(default_factory=list, description="Suggested follow-up questions")
+
+
+def _suggestions_timeout_seconds() -> float:
+    raw = os.getenv("DEER_FLOW_SUGGESTIONS_TIMEOUT_SECONDS", "").strip()
+    if not raw:
+        return DEFAULT_SUGGESTIONS_TIMEOUT_SECONDS
+    try:
+        timeout = float(raw)
+    except ValueError:
+        logger.warning(
+            "Invalid DEER_FLOW_SUGGESTIONS_TIMEOUT_SECONDS=%r; using default %.1fs",
+            raw,
+            DEFAULT_SUGGESTIONS_TIMEOUT_SECONDS,
+        )
+        return DEFAULT_SUGGESTIONS_TIMEOUT_SECONDS
+    return max(timeout, 0.1)
 
 
 def _strip_markdown_code_fence(text: str) -> str:
@@ -121,12 +141,22 @@ async def generate_suggestions(thread_id: str, request: SuggestionsRequest) -> S
 
     try:
         model = create_chat_model(name=request.model_name, thinking_enabled=False)
-        response = await model.ainvoke([SystemMessage(content=system_instruction), HumanMessage(content=user_content)])
+        response = await asyncio.wait_for(
+            model.ainvoke([SystemMessage(content=system_instruction), HumanMessage(content=user_content)]),
+            timeout=_suggestions_timeout_seconds(),
+        )
         raw = _extract_response_text(response.content)
         suggestions = _parse_json_string_list(raw) or []
         cleaned = [s.replace("\n", " ").strip() for s in suggestions if s.strip()]
         cleaned = cleaned[:n]
         return SuggestionsResponse(suggestions=cleaned)
+    except TimeoutError:
+        logger.warning(
+            "Timed out generating suggestions after %.1fs: thread_id=%s",
+            _suggestions_timeout_seconds(),
+            thread_id,
+        )
+        return SuggestionsResponse(suggestions=[])
     except Exception as exc:
         logger.exception("Failed to generate suggestions: thread_id=%s err=%s", thread_id, exc)
         return SuggestionsResponse(suggestions=[])

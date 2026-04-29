@@ -2,15 +2,19 @@
 
 import type { ChatStatus } from "ai";
 import {
+  BarChart3Icon,
+  BotIcon,
+  BriefcaseBusinessIcon,
   CheckIcon,
+  FileTextIcon,
   GraduationCapIcon,
   LightbulbIcon,
   PaperclipIcon,
-  PlusIcon,
   SparklesIcon,
   RocketIcon,
   XIcon,
   ZapIcon,
+  type LucideIcon,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -41,7 +45,6 @@ import {
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
-import { ConfettiButton } from "@/components/ui/confetti-button";
 import {
   Dialog,
   DialogContent,
@@ -53,11 +56,12 @@ import {
 import {
   DropdownMenuGroup,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { getBackendBaseURL } from "@/core/config";
 import { useI18n } from "@/core/i18n/hooks";
 import { useModels } from "@/core/models/hooks";
+import { useSkills } from "@/core/skills/hooks";
+import type { Skill } from "@/core/skills/type";
 import type { AgentThreadContext } from "@/core/threads";
 import { textOfMessage } from "@/core/threads/utils";
 import { cn } from "@/lib/utils";
@@ -72,18 +76,93 @@ import {
   ModelSelectorTrigger,
 } from "../ai-elements/model-selector";
 import { Suggestion, Suggestions } from "../ai-elements/suggestion";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
 
 import { useThread } from "./messages/context";
 import { ModeHoverGuide } from "./mode-hover-guide";
 import { Tooltip } from "./tooltip";
 
 type InputMode = "flash" | "thinking" | "pro" | "ultra";
+
+type StarterAction = {
+  skillName: string;
+  title: string;
+  description: string;
+  prompt: string;
+  icon: LucideIcon;
+};
+
+const STARTER_ACTIONS: StarterAction[] = [
+  {
+    skillName: "academic-paper-review",
+    title: "Review an academic paper",
+    description: "Critique methods, claims, novelty, and limitations.",
+    prompt:
+      "Review [paper URL or uploaded PDF] as an academic paper. Summarize the contribution, assess methodology, identify strengths and weaknesses, and give concrete review feedback.",
+    icon: FileTextIcon,
+  },
+  {
+    skillName: "bootstrap",
+    title: "Customize an AI agent",
+    description: "Design a persistent agent identity and SOUL.",
+    prompt:
+      "Help me design and save a persistent AI agent for [workflow]. Ask only for essential missing details, then bootstrap its SOUL.",
+    icon: BotIcon,
+  },
+  {
+    skillName: "chart-visualization",
+    title: "Visualize some data",
+    description: "Turn a table or dataset into useful charts.",
+    prompt:
+      "Analyze and visualize [dataset or pasted table]. Pick the clearest chart type, explain the takeaway, and save any generated chart artifact.",
+    icon: BarChart3Icon,
+  },
+  {
+    skillName: "consulting-analysis",
+    title: "Get consulting analysis",
+    description: "Frame a market, strategy, or competitive report.",
+    prompt:
+      "Create a consulting-style analysis for [topic]. Build the analysis framework, identify data needed, research the market, and produce concise strategic recommendations.",
+    icon: BriefcaseBusinessIcon,
+  },
+  {
+    skillName: "deep-research",
+    title: "Research a topic deeply",
+    description: "Search, cross-check, synthesize, and cite.",
+    prompt:
+      "Research [topic] deeply. Use multiple sources, cross-check important claims, and summarize key takeaways with citations.",
+    icon: GraduationCapIcon,
+  },
+  {
+    skillName: "skill-creator",
+    title: "Create a new skill",
+    description: "Draft or improve a reusable workflow skill.",
+    prompt:
+      "Help me create a new skill for [task]. Clarify the trigger, workflow, required resources, and write the first SKILL.md draft.",
+    icon: SparklesIcon,
+  },
+  {
+    skillName: "surprise-me",
+    title: "Surprise me",
+    description: "Combine enabled skills into something useful.",
+    prompt:
+      "Surprise me with a useful workflow using the enabled Kamiwaza Flow skills. Start with a brief plan, then execute it.",
+    icon: SparklesIcon,
+  },
+];
+
+function getEnabledStarterActions(skills: Skill[]): StarterAction[] {
+  if (skills.length === 0) {
+    return STARTER_ACTIONS.slice(0, 5);
+  }
+
+  const enabled = new Set(
+    skills.filter((skill) => skill.enabled).map((skill) => skill.name),
+  );
+
+  return STARTER_ACTIONS.filter((action) =>
+    enabled.has(action.skillName),
+  ).slice(0, 5);
+}
 
 function getResolvedMode(
   mode: InputMode | undefined,
@@ -199,6 +278,13 @@ export function InputBox({
     () => selectedModel?.supports_reasoning_effort ?? false,
     [selectedModel],
   );
+  const activeMode: InputMode =
+    context.mode === "flash" ||
+    context.mode === "thinking" ||
+    context.mode === "pro" ||
+    context.mode === "ultra"
+      ? context.mode
+      : "flash";
 
   const handleModelSelect = useCallback(
     (model_name: string) => {
@@ -434,7 +520,7 @@ export function InputBox({
         <div className="flex items-center justify-center pb-2">
           <div className="flex items-center gap-2">
             {followupsLoading ? (
-              <div className="text-muted-foreground bg-background/80 rounded-full border px-4 py-2 text-xs backdrop-blur-sm">
+              <div className="rounded-full border border-[var(--kz-border-soft)] bg-[rgba(17,24,39,0.9)] px-4 py-2 text-xs text-[var(--kz-text-3)] backdrop-blur-sm">
                 {t.inputBox.followupLoading}
               </div>
             ) : (
@@ -463,7 +549,8 @@ export function InputBox({
       )}
       <PromptInput
         className={cn(
-          "bg-background/85 rounded-2xl backdrop-blur-sm transition-all duration-300 ease-out *:data-[slot='input-group']:rounded-2xl",
+          "rounded-[20px] bg-transparent backdrop-blur-sm transition-all duration-300 ease-out *:data-[slot='input-group']:min-h-32 *:data-[slot='input-group']:rounded-[20px] *:data-[slot='input-group']:border-[var(--kz-border)] *:data-[slot='input-group']:bg-[var(--kz-surface)] *:data-[slot='input-group']:shadow-[var(--kz-shadow-card)] *:data-[slot='input-group']:has-[[data-slot=input-group-control]:focus-visible]:border-[var(--kz-border-emerald)] *:data-[slot='input-group']:has-[[data-slot=input-group-control]:focus-visible]:ring-[var(--kz-primary-glow)]",
+          isNewThread ? "flux-border halo" : "",
           className,
         )}
         disabled={disabled}
@@ -484,15 +571,17 @@ export function InputBox({
         </PromptInputAttachments>
         <PromptInputBody className="absolute top-0 right-0 left-0 z-3">
           <PromptInputTextarea
-            className={cn("size-full")}
+            className={cn(
+              "size-full px-4 pt-4 pb-20 text-[15px] leading-6 text-[var(--kz-text)] placeholder:text-[var(--kz-text-4)]",
+            )}
             disabled={disabled}
             placeholder={t.inputBox.placeholder}
             autoFocus={autoFocus}
             defaultValue={initialValue}
           />
         </PromptInputBody>
-        <PromptInputFooter className="flex">
-          <PromptInputTools>
+        <PromptInputFooter className="flex border-t border-[var(--kz-border-soft)] px-3 pt-2 pb-3">
+          <PromptInputTools className="min-w-0">
             {/* TODO: Add more connectors here
           <PromptInputActionMenu>
             <PromptInputActionMenuTrigger className="px-2!" />
@@ -504,44 +593,36 @@ export function InputBox({
           </PromptInputActionMenu> */}
             <AddAttachmentsButton className="px-2!" />
             <PromptInputActionMenu>
-              <ModeHoverGuide
-                mode={
-                  context.mode === "flash" ||
-                  context.mode === "thinking" ||
-                  context.mode === "pro" ||
-                  context.mode === "ultra"
-                    ? context.mode
-                    : "flash"
-                }
-              >
-                <PromptInputActionMenuTrigger className="gap-1! px-2!">
+              <ModeHoverGuide mode={activeMode}>
+                <PromptInputActionMenuTrigger className="rounded-full border border-[var(--kz-border-soft)] px-2.5! text-[var(--kz-text-3)] hover:border-[var(--kz-border-emerald)] hover:bg-[var(--kz-primary-soft)] hover:text-[var(--kz-primary-2)]">
                   <div>
-                    {context.mode === "flash" && <ZapIcon className="size-3" />}
-                    {context.mode === "thinking" && (
+                    {activeMode === "flash" && <ZapIcon className="size-3" />}
+                    {activeMode === "thinking" && (
                       <LightbulbIcon className="size-3" />
                     )}
-                    {context.mode === "pro" && (
+                    {activeMode === "pro" && (
                       <GraduationCapIcon className="size-3" />
                     )}
-                    {context.mode === "ultra" && (
-                      <RocketIcon className="size-3 text-[#dabb5e]" />
+                    {activeMode === "ultra" && (
+                      <RocketIcon className="size-3 text-[var(--kz-primary-2)]" />
                     )}
                   </div>
                   <div
                     className={cn(
                       "text-xs font-normal",
-                      context.mode === "ultra" ? "golden-text" : "",
+                      activeMode === "ultra"
+                        ? "text-[var(--kz-primary-2)]"
+                        : "",
                     )}
                   >
-                    {(context.mode === "flash" && t.inputBox.flashMode) ||
-                      (context.mode === "thinking" &&
-                        t.inputBox.reasoningMode) ||
-                      (context.mode === "pro" && t.inputBox.proMode) ||
-                      (context.mode === "ultra" && t.inputBox.ultraMode)}
+                    {(activeMode === "flash" && t.inputBox.flashMode) ||
+                      (activeMode === "thinking" && t.inputBox.reasoningMode) ||
+                      (activeMode === "pro" && t.inputBox.proMode) ||
+                      (activeMode === "ultra" && t.inputBox.ultraMode)}
                   </div>
                 </PromptInputActionMenuTrigger>
               </ModeHoverGuide>
-              <PromptInputActionMenuContent className="w-80">
+              <PromptInputActionMenuContent className="w-80 rounded-[var(--kz-r)] border-[var(--kz-border)] bg-[var(--kz-surface)] p-2">
                 <DropdownMenuGroup>
                   <DropdownMenuLabel className="text-muted-foreground text-xs">
                     {t.inputBox.mode}
@@ -549,7 +630,7 @@ export function InputBox({
                   <PromptInputActionMenu>
                     <PromptInputActionMenuItem
                       className={cn(
-                        context.mode === "flash"
+                        activeMode === "flash"
                           ? "text-accent-foreground"
                           : "text-muted-foreground/65",
                       )}
@@ -560,7 +641,7 @@ export function InputBox({
                           <ZapIcon
                             className={cn(
                               "mr-2 size-4",
-                              context.mode === "flash" &&
+                              activeMode === "flash" &&
                                 "text-accent-foreground",
                             )}
                           />
@@ -570,7 +651,7 @@ export function InputBox({
                           {t.inputBox.flashModeDescription}
                         </div>
                       </div>
-                      {context.mode === "flash" ? (
+                      {activeMode === "flash" ? (
                         <CheckIcon className="ml-auto size-4" />
                       ) : (
                         <div className="ml-auto size-4" />
@@ -579,7 +660,7 @@ export function InputBox({
                     {supportThinking && (
                       <PromptInputActionMenuItem
                         className={cn(
-                          context.mode === "thinking"
+                          activeMode === "thinking"
                             ? "text-accent-foreground"
                             : "text-muted-foreground/65",
                         )}
@@ -590,7 +671,7 @@ export function InputBox({
                             <LightbulbIcon
                               className={cn(
                                 "mr-2 size-4",
-                                context.mode === "thinking" &&
+                                activeMode === "thinking" &&
                                   "text-accent-foreground",
                               )}
                             />
@@ -600,7 +681,7 @@ export function InputBox({
                             {t.inputBox.reasoningModeDescription}
                           </div>
                         </div>
-                        {context.mode === "thinking" ? (
+                        {activeMode === "thinking" ? (
                           <CheckIcon className="ml-auto size-4" />
                         ) : (
                           <div className="ml-auto size-4" />
@@ -609,7 +690,7 @@ export function InputBox({
                     )}
                     <PromptInputActionMenuItem
                       className={cn(
-                        context.mode === "pro"
+                        activeMode === "pro"
                           ? "text-accent-foreground"
                           : "text-muted-foreground/65",
                       )}
@@ -620,8 +701,7 @@ export function InputBox({
                           <GraduationCapIcon
                             className={cn(
                               "mr-2 size-4",
-                              context.mode === "pro" &&
-                                "text-accent-foreground",
+                              activeMode === "pro" && "text-accent-foreground",
                             )}
                           />
                           {t.inputBox.proMode}
@@ -630,7 +710,7 @@ export function InputBox({
                           {t.inputBox.proModeDescription}
                         </div>
                       </div>
-                      {context.mode === "pro" ? (
+                      {activeMode === "pro" ? (
                         <CheckIcon className="ml-auto size-4" />
                       ) : (
                         <div className="ml-auto size-4" />
@@ -638,7 +718,7 @@ export function InputBox({
                     </PromptInputActionMenuItem>
                     <PromptInputActionMenuItem
                       className={cn(
-                        context.mode === "ultra"
+                        activeMode === "ultra"
                           ? "text-accent-foreground"
                           : "text-muted-foreground/65",
                       )}
@@ -649,12 +729,14 @@ export function InputBox({
                           <RocketIcon
                             className={cn(
                               "mr-2 size-4",
-                              context.mode === "ultra" && "text-[#dabb5e]",
+                              activeMode === "ultra" &&
+                                "text-[var(--kz-primary-2)]",
                             )}
                           />
                           <div
                             className={cn(
-                              context.mode === "ultra" && "golden-text",
+                              activeMode === "ultra" &&
+                                "text-[var(--kz-primary-2)]",
                             )}
                           >
                             {t.inputBox.ultraMode}
@@ -664,7 +746,7 @@ export function InputBox({
                           {t.inputBox.ultraModeDescription}
                         </div>
                       </div>
-                      {context.mode === "ultra" ? (
+                      {activeMode === "ultra" ? (
                         <CheckIcon className="ml-auto size-4" />
                       ) : (
                         <div className="ml-auto size-4" />
@@ -674,9 +756,9 @@ export function InputBox({
                 </DropdownMenuGroup>
               </PromptInputActionMenuContent>
             </PromptInputActionMenu>
-            {supportReasoningEffort && context.mode !== "flash" && (
+            {supportReasoningEffort && activeMode !== "flash" && (
               <PromptInputActionMenu>
-                <PromptInputActionMenuTrigger className="gap-1! px-2!">
+                <PromptInputActionMenuTrigger className="rounded-full border border-[var(--kz-border-soft)] px-2.5! text-[var(--kz-text-3)] hover:border-[var(--kz-border-emerald)] hover:bg-[var(--kz-primary-soft)] hover:text-[var(--kz-primary-2)]">
                   <div className="text-xs font-normal">
                     {t.inputBox.reasoningEffort}:
                     {context.reasoning_effort === "minimal" &&
@@ -689,7 +771,7 @@ export function InputBox({
                       " " + t.inputBox.reasoningEffortHigh}
                   </div>
                 </PromptInputActionMenuTrigger>
-                <PromptInputActionMenuContent className="w-70">
+                <PromptInputActionMenuContent className="w-70 rounded-[var(--kz-r)] border-[var(--kz-border)] bg-[var(--kz-surface)] p-2">
                   <DropdownMenuGroup>
                     <DropdownMenuLabel className="text-muted-foreground text-xs">
                       {t.inputBox.reasoningEffort}
@@ -791,16 +873,17 @@ export function InputBox({
               </PromptInputActionMenu>
             )}
           </PromptInputTools>
-          <PromptInputTools>
+          <PromptInputTools className="min-w-0">
             <ModelSelector
               open={modelDialogOpen}
               onOpenChange={setModelDialogOpen}
             >
               <ModelSelectorTrigger asChild>
-                <PromptInputButton>
+                <PromptInputButton className="max-w-[16rem] rounded-full border border-[var(--kz-border-soft)] px-3! text-[var(--kz-text-2)] hover:border-[var(--kz-border-emerald)] hover:bg-[var(--kz-primary-soft)] hover:text-[var(--kz-primary-2)]">
                   <div className="flex min-w-0 flex-col items-start text-left">
                     <ModelSelectorName className="text-xs font-normal">
                       {selectedModel?.display_name}
+                      {!selectedModel && t.inputBox.searchModels}
                     </ModelSelectorName>
                   </div>
                 </PromptInputButton>
@@ -831,9 +914,9 @@ export function InputBox({
               </ModelSelectorContent>
             </ModelSelector>
             <PromptInputSubmit
-              className="rounded-full"
+              className="rounded-full bg-[var(--kz-primary)] text-[#07140f] shadow-[var(--kz-shadow-primary)] hover:bg-[var(--kz-primary-2)]"
               disabled={disabled}
-              variant="outline"
+              variant="default"
               status={status}
             />
           </PromptInputTools>
@@ -875,8 +958,9 @@ export function InputBox({
 }
 
 function SuggestionList() {
-  const { t } = useI18n();
   const { textInput } = usePromptInputController();
+  const { skills } = useSkills();
+  const actions = useMemo(() => getEnabledStarterActions(skills), [skills]);
   const handleSuggestionClick = useCallback(
     (prompt: string | undefined) => {
       if (!prompt) return;
@@ -898,48 +982,31 @@ function SuggestionList() {
     [textInput],
   );
   return (
-    <Suggestions className="min-h-16 w-fit items-start">
-      <ConfettiButton
-        className="text-muted-foreground cursor-pointer rounded-full px-4 text-xs font-normal"
-        variant="outline"
-        size="sm"
-        onClick={() => handleSuggestionClick(t.inputBox.surpriseMePrompt)}
-      >
-        <SparklesIcon className="size-4" /> {t.inputBox.surpriseMe}
-      </ConfettiButton>
-      {t.inputBox.suggestions.map((suggestion) => (
-        <Suggestion
-          key={suggestion.suggestion}
-          icon={suggestion.icon}
-          suggestion={suggestion.suggestion}
-          onClick={() => handleSuggestionClick(suggestion.prompt)}
-        />
+    <div className="mx-auto grid w-full max-w-[52rem] grid-cols-1 items-stretch gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {actions.map((action) => (
+        <Button
+          key={action.skillName}
+          className={cn(
+            "h-full min-h-[76px] w-full cursor-pointer items-start justify-start gap-3 rounded-[var(--kz-r)] border-[var(--kz-border-soft)] bg-[rgba(17,24,39,0.58)] px-4 py-3 text-left text-xs font-normal whitespace-normal shadow-none hover:border-[var(--kz-border-emerald)] hover:bg-[var(--kz-primary-soft)] hover:text-[var(--kz-text)]",
+            action.skillName === "surprise-me" &&
+              "border-[var(--kz-border-emerald)] bg-[var(--kz-primary-soft)]",
+          )}
+          variant="outline"
+          size="sm"
+          onClick={() => handleSuggestionClick(action.prompt)}
+        >
+          <action.icon className="mt-0.5 size-4 shrink-0 text-[var(--kz-primary-2)]" />
+          <span className="block min-w-0 flex-1 overflow-hidden">
+            <span className="block overflow-hidden text-sm leading-5 font-medium text-[var(--kz-text)] text-ellipsis whitespace-nowrap">
+              {action.title}
+            </span>
+            <span className="mt-1 block overflow-hidden text-[11px] leading-4 break-words text-[var(--kz-text-3)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+              {action.description}
+            </span>
+          </span>
+        </Button>
       ))}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Suggestion icon={PlusIcon} suggestion={t.common.create} />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuGroup>
-            {t.inputBox.suggestionsCreate.map((suggestion, index) =>
-              "type" in suggestion && suggestion.type === "separator" ? (
-                <DropdownMenuSeparator key={index} />
-              ) : (
-                !("type" in suggestion) && (
-                  <DropdownMenuItem
-                    key={suggestion.suggestion}
-                    onClick={() => handleSuggestionClick(suggestion.prompt)}
-                  >
-                    {suggestion.icon && <suggestion.icon className="size-4" />}
-                    {suggestion.suggestion}
-                  </DropdownMenuItem>
-                )
-              ),
-            )}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </Suggestions>
+    </div>
   );
 }
 
@@ -949,7 +1016,10 @@ function AddAttachmentsButton({ className }: { className?: string }) {
   return (
     <Tooltip content={t.inputBox.addAttachments}>
       <PromptInputButton
-        className={cn("px-2!", className)}
+        className={cn(
+          "rounded-full px-2! text-[var(--kz-text-3)] hover:bg-[var(--kz-primary-soft)] hover:text-[var(--kz-primary-2)]",
+          className,
+        )}
         onClick={() => attachments.openFileDialog()}
       >
         <PaperclipIcon className="size-3" />

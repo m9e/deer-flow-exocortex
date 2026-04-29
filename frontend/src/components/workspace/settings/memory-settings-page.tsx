@@ -555,13 +555,13 @@ export function MemorySettingsPage() {
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={searchPlaceholder}
-                  className="sm:max-w-xs"
+                  className="min-w-0 lg:max-w-md lg:min-w-72"
                 />
                 <ToggleGroup
                   type="single"
@@ -570,6 +570,7 @@ export function MemorySettingsPage() {
                     if (value) setFilter(value as MemoryViewFilter);
                   }}
                   variant="outline"
+                  className="w-full flex-wrap sm:w-fit"
                 >
                   <ToggleGroupItem value="all">{filterAll}</ToggleGroupItem>
                   <ToggleGroupItem value="facts">{filterFacts}</ToggleGroupItem>
@@ -579,7 +580,7 @@ export function MemorySettingsPage() {
                 </ToggleGroup>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   ref={fileInputRef}
                   type="file"

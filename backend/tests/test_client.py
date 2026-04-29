@@ -784,6 +784,9 @@ class TestExtractText:
     def test_string(self):
         assert DeerFlowClient._extract_text("hello") == "hello"
 
+    def test_strips_internal_system_reminder(self):
+        assert DeerFlowClient._extract_text("visible <system_reminder>internal</system_reminder>") == "visible"
+
     def test_list_text_blocks(self):
         content = [
             {"type": "text", "text": "first"},
@@ -925,10 +928,12 @@ class TestGetModel:
 
         result = client.get_model("test-model")
         assert result == {
+            "id": "test-model",
             "name": "test-model",
             "model": "test-model",
             "display_name": "Test Model",
             "description": "A test model",
+            "provider": None,
             "supports_thinking": True,
             "supports_reasoning_effort": True,
         }
@@ -2800,6 +2805,26 @@ class TestSerializeMessage:
         assert result["type"] == "ai"
         assert len(result["tool_calls"]) == 1
         assert result["tool_calls"][0]["name"] == "bash"
+
+    def test_message_metadata_and_internal_reminder_sanitization(self):
+        msg = HumanMessage(
+            content="<system_reminder>internal</system_reminder>",
+            id="todo-1",
+            name="todo_reminder",
+            additional_kwargs={"hide_from_ui": True},
+        )
+        result = DeerFlowClient._serialize_message(msg)
+        assert result["name"] == "todo_reminder"
+        assert result["additional_kwargs"] == {"hide_from_ui": True}
+        assert result["content"] == ""
+
+    def test_ai_message_internal_reminder_sanitization(self):
+        msg = AIMessage(
+            content="Visible\n<system_reminder>internal</system_reminder>",
+            id="ai-reminder",
+        )
+        result = DeerFlowClient._serialize_message(msg)
+        assert result["content"] == "Visible"
 
     def test_tool_message_non_string_content(self):
         msg = ToolMessage(content={"key": "value"}, id="tm-1", tool_call_id="tc-1", name="tool")

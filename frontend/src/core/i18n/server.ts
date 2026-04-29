@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 
+import { getAppCookiePath } from "@/core/config";
+
 import { DEFAULT_LOCALE, normalizeLocale, type Locale } from "./locale";
 import { translations } from "./translations";
 
@@ -22,7 +24,7 @@ export async function setLocale(locale: string | Locale): Promise<Locale> {
   const cookieStore = await cookies();
   cookieStore.set("locale", encodeURIComponent(normalizedLocale), {
     maxAge: 365 * 24 * 60 * 60,
-    path: "/",
+    path: getAppCookiePath(),
     sameSite: "lax",
   });
 

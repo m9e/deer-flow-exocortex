@@ -1,10 +1,11 @@
 import {
+  BarChart3Icon,
+  BotIcon,
+  BriefcaseBusinessIcon,
   CompassIcon,
+  FileTextIcon,
   GraduationCapIcon,
   ImageIcon,
-  MicroscopeIcon,
-  PenLineIcon,
-  ShapesIcon,
   SparklesIcon,
   VideoIcon,
 } from "lucide-react";
@@ -61,11 +62,11 @@ export const enUS: Translations = {
   welcome: {
     greeting: "Hello, again!",
     description:
-      "Welcome to 🦌 DeerFlow, an open source super agent. With built-in and custom skills, DeerFlow helps you search on the web, analyze data, and generate artifacts like slides, web pages and do almost anything.",
+      "Welcome to Kamiwaza Flow. Use Kamiwaza models, tools, memory, and subagents from one agentic workspace.",
 
     createYourOwnSkill: "Create Your Own Skill",
     createYourOwnSkillDescription:
-      "Create your own skill to release the power of DeerFlow. With customized skills,\nDeerFlow can help you search on the web, analyze data, and generate\n artifacts like slides, web pages and do almost anything.",
+      "Create your own skill for Kamiwaza Flow. With custom skills,\nKamiwaza Flow can search, analyze data, and generate artifacts like\nslides, web pages, and reports.",
   },
 
   // Clipboard
@@ -107,7 +108,9 @@ export const enUS: Translations = {
       "Full-dimensional Logic Deduction + Multi-path Verification + Backward Check",
     searchModels: "Search models...",
     surpriseMe: "Surprise",
-    surpriseMePrompt: "Surprise me",
+    surpriseMePrompt:
+      "Pick a useful multi-step task that demonstrates Kamiwaza Flow's models, tools, skills, memory, and artifacts. Start with a brief plan, then execute it.",
+    surpriseMeDescription: "Let the workspace choose a useful workflow.",
     followupLoading: "Generating follow-up questions...",
     followupConfirmTitle: "Send suggestion?",
     followupConfirmDescription:
@@ -116,24 +119,38 @@ export const enUS: Translations = {
     followupConfirmReplace: "Replace & send",
     suggestions: [
       {
-        suggestion: "Write",
-        prompt: "Write a blog post about the latest trends on [topic]",
-        icon: PenLineIcon,
-      },
-      {
-        suggestion: "Research",
+        suggestion: "Review an academic paper",
+        description: "Critique methods, claims, novelty, and limitations.",
         prompt:
-          "Conduct a deep dive research on [topic], and summarize the findings.",
-        icon: MicroscopeIcon,
+          "Review [paper URL or uploaded PDF] as an academic paper. Summarize the contribution, assess methodology, identify strengths and weaknesses, and give concrete review feedback.",
+        icon: FileTextIcon,
       },
       {
-        suggestion: "Collect",
-        prompt: "Collect data from [source] and create a report.",
-        icon: ShapesIcon,
+        suggestion: "Customize an AI agent",
+        description: "Design a persistent agent identity and SOUL.",
+        prompt:
+          "Help me design and save a persistent AI agent for [workflow]. Ask only for essential missing details, then bootstrap its SOUL.",
+        icon: BotIcon,
       },
       {
-        suggestion: "Learn",
-        prompt: "Learn about [topic] and create a tutorial.",
+        suggestion: "Visualize some data",
+        description: "Turn a table or dataset into useful charts.",
+        prompt:
+          "Analyze and visualize [dataset or pasted table]. Pick the clearest chart type, explain the takeaway, and save any generated chart artifact.",
+        icon: BarChart3Icon,
+      },
+      {
+        suggestion: "Get consulting analysis",
+        description: "Frame a market, strategy, or competitive report.",
+        prompt:
+          "Create a consulting-style analysis for [topic]. Build the analysis framework, identify data needed, research the market, and produce concise strategic recommendations.",
+        icon: BriefcaseBusinessIcon,
+      },
+      {
+        suggestion: "Research a topic deeply",
+        description: "Search, cross-check, synthesize, and cite.",
+        prompt:
+          "Research [topic] deeply. Use multiple sources, cross-check important claims, and summarize key takeaways with citations.",
         icon: GraduationCapIcon,
       },
     ],
@@ -208,13 +225,13 @@ export const enUS: Translations = {
     save: "Save agent",
     saving: "Saving agent...",
     saveRequested:
-      "Save requested. DeerFlow is generating and saving an initial version now.",
+      "Save requested. Kamiwaza Flow is generating and saving an initial version now.",
     saveHint:
       "You can save this agent at any time from the top-right menu, even if this is only a first draft.",
     saveCommandMessage:
       "Please save this custom agent now based on everything we have discussed so far. Treat this as my explicit confirmation to save. If some details are still missing, make reasonable assumptions, generate a concise first SOUL.md in English, and call setup_agent immediately without asking me for more confirmation.",
     agentCreatedPendingRefresh:
-      "The agent was created, but DeerFlow could not load it yet. Please refresh this page in a moment.",
+      "The agent was created, but Kamiwaza Flow could not load it yet. Please refresh this page in a moment.",
     more: "More actions",
     agentCreated: "Agent created!",
     startChatting: "Start chatting",
@@ -229,13 +246,13 @@ export const enUS: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "DeerFlow's official website",
-    githubTooltip: "DeerFlow on Github",
+    officialWebsite: "Kamiwaza website",
+    githubTooltip: "Kamiwaza Flow source",
     settingsAndMore: "Settings and more",
-    visitGithub: "DeerFlow on GitHub",
+    visitGithub: "Kamiwaza Flow on GitHub",
     reportIssue: "Report a issue",
     contactUs: "Contact us",
-    about: "About DeerFlow",
+    about: "About Kamiwaza Flow",
   },
 
   // Conversation
@@ -251,7 +268,7 @@ export const enUS: Translations = {
 
   // Page titles (document title)
   pages: {
-    appName: "DeerFlow",
+    appName: "Kamiwaza Flow",
     chats: "Chats",
     newChat: "New chat",
     untitled: "Untitled",
@@ -277,7 +294,7 @@ export const enUS: Translations = {
     writeFile: "Write file",
     clickToViewContent: "Click to view file content",
     writeTodos: "Update to-do list",
-    skillInstallTooltip: "Install skill and make it available to DeerFlow",
+    skillInstallTooltip: "Install skill and make it available to Kamiwaza Flow",
   },
 
   // Subtasks
@@ -314,7 +331,7 @@ export const enUS: Translations = {
     actions: "Actions",
     keyboardShortcuts: "Keyboard Shortcuts",
     keyboardShortcutsDescription:
-      "Navigate DeerFlow faster with keyboard shortcuts.",
+      "Navigate Kamiwaza Flow faster with keyboard shortcuts.",
     openCommandPalette: "Open Command Palette",
     toggleSidebar: "Toggle Sidebar",
   },
@@ -322,7 +339,7 @@ export const enUS: Translations = {
   // Settings
   settings: {
     title: "Settings",
-    description: "Adjust how DeerFlow looks and behaves for you.",
+    description: "Adjust how Kamiwaza Flow looks and behaves for you.",
     sections: {
       appearance: "Appearance",
       memory: "Memory",
@@ -334,7 +351,7 @@ export const enUS: Translations = {
     memory: {
       title: "Memory",
       description:
-        "DeerFlow automatically learns from your conversations in the background. These memories help DeerFlow understand you better and deliver a more personalized experience.",
+        "Kamiwaza Flow automatically learns from your conversations in the background. These memories help it understand you better and deliver a more personalized experience.",
       empty: "No memory data to display.",
       rawJson: "Raw JSON",
       exportButton: "Export memory",
@@ -434,18 +451,18 @@ export const enUS: Translations = {
       createSkill: "Create skill",
       emptyTitle: "No agent skill yet",
       emptyDescription:
-        "Put your agent skill folders under the `/skills/custom` folder under the root folder of DeerFlow.",
+        "Put your agent skill folders under the `/skills/custom` folder under the root folder of Kamiwaza Flow.",
       emptyButton: "Create Your First Skill",
     },
     notification: {
       title: "Notification",
       description:
-        "DeerFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
+        "Kamiwaza Flow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
       requestPermission: "Request notification permission",
       deniedHint:
         "Notification permission was denied. You can enable it in your browser's site settings to receive completion alerts.",
       testButton: "Send test notification",
-      testTitle: "DeerFlow",
+      testTitle: "Kamiwaza Flow",
       testBody: "This is a test notification.",
       notSupported: "Your browser does not support notifications.",
       disableNotification: "Disable notification",

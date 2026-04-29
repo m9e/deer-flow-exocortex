@@ -1,8 +1,13 @@
 """Configuration and loaders for custom agents."""
 
+import json
 import logging
+import os
 import re
 from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
 
 import yaml
 from pydantic import BaseModel
@@ -13,6 +18,13 @@ logger = logging.getLogger(__name__)
 
 SOUL_FILENAME = "SOUL.md"
 AGENT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
+REMOTE_AGENTS_API_BASE_URL_ENV = "DEER_FLOW_AGENTS_API_BASE_URL"
+REMOTE_AGENTS_API_TIMEOUT_SECONDS_ENV = "DEER_FLOW_AGENTS_API_TIMEOUT_SECONDS"
+
+
+def remote_agents_store_configured() -> bool:
+    """Return whether this process should use a remote custom-agent store."""
+    return bool(_remote_agents_api_base_url())
 
 
 def validate_agent_name(name: str | None) -> str | None:
@@ -40,6 +52,133 @@ class AgentConfig(BaseModel):
     skills: list[str] | None = None
 
 
+def _remote_agents_api_base_url() -> str | None:
+    base_url = os.getenv(REMOTE_AGENTS_API_BASE_URL_ENV, "").strip().rstrip("/")
+    if base_url:
+        return base_url
+
+    # App Garden currently gives each service its own PVC even when Compose uses
+    # the same named volume. In the LangGraph runtime, use gateway as the
+    # canonical custom-agent store when the platform deployment id is available.
+    if not os.getenv("LANGGRAPH_JOBS_PER_WORKER"):
+        return None
+    if channel_gateway_url := os.getenv("DEER_FLOW_CHANNELS_GATEWAY_URL", "").strip().rstrip("/"):
+        return channel_gateway_url
+    if deployment_id := os.getenv("KAMIWAZA_DEPLOYMENT_ID", "").strip():
+        return f"http://{deployment_id}-gateway:8001"
+    return None
+
+
+def _remote_agents_api_timeout_seconds() -> float:
+    raw = os.getenv(REMOTE_AGENTS_API_TIMEOUT_SECONDS_ENV, "5.0").strip()
+    try:
+        timeout = float(raw)
+    except ValueError:
+        logger.warning(
+            "Invalid %s=%r; using 5.0s",
+            REMOTE_AGENTS_API_TIMEOUT_SECONDS_ENV,
+            raw,
+        )
+        return 5.0
+    return max(timeout, 0.1)
+
+
+def _remote_agents_api_url(path: str) -> str | None:
+    base_url = _remote_agents_api_base_url()
+    if not base_url:
+        return None
+    api_prefix = "" if base_url.endswith("/api") else "/api"
+    return f"{base_url}{api_prefix}{path}"
+
+
+def _remote_json_request(
+    method: str,
+    path: str,
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    url = _remote_agents_api_url(path)
+    if not url:
+        return None
+
+    body = None
+    headers = {"Accept": "application/json"}
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    request = Request(url, data=body, headers=headers, method=method)
+    with urlopen(request, timeout=_remote_agents_api_timeout_seconds()) as response:
+        response_body = response.read()
+        if not response_body:
+            return {}
+        return json.loads(response_body.decode("utf-8"))
+
+
+def _fetch_remote_agent_data(name: str) -> dict[str, Any] | None:
+    """Fetch one custom agent from the configured management API, if enabled."""
+    if not _remote_agents_api_base_url():
+        return None
+
+    try:
+        data = _remote_json_request("GET", f"/agents/{quote(name, safe='')}")
+    except HTTPError as e:
+        if e.code == 404:
+            raise FileNotFoundError(f"Remote agent not found: {name}") from e
+        logger.warning("Failed to fetch remote agent %r: HTTP %s", name, e.code)
+        return None
+    except (URLError, TimeoutError, OSError, json.JSONDecodeError) as e:
+        logger.warning("Failed to fetch remote agent %r: %s", name, e)
+        return None
+
+    if not isinstance(data, dict):
+        logger.warning("Ignoring invalid remote agent response for %r: expected object", name)
+        return None
+    return data
+
+
+def _agent_config_from_data(name: str, data: dict[str, Any]) -> AgentConfig:
+    if "name" not in data:
+        data = {**data, "name": name}
+    known_fields = set(AgentConfig.model_fields.keys())
+    normalized = {k: v for k, v in data.items() if k in known_fields}
+    return AgentConfig(**normalized)
+
+
+def sync_agent_to_remote_store(agent_name: str, *, soul: str, description: str) -> bool:
+    """Upsert a custom agent into the configured remote management API."""
+    agent_name = validate_agent_name(agent_name) or ""
+    if not agent_name or not _remote_agents_api_base_url():
+        return False
+
+    update_payload: dict[str, Any] = {"description": description, "soul": soul}
+    create_payload: dict[str, Any] = {
+        "name": agent_name,
+        "description": description,
+        "soul": soul,
+    }
+
+    try:
+        _remote_json_request("PUT", f"/agents/{quote(agent_name, safe='')}", update_payload)
+        return True
+    except HTTPError as e:
+        if e.code != 404:
+            logger.warning("Failed to update remote agent %r: HTTP %s", agent_name, e.code)
+            return False
+    except (URLError, TimeoutError, OSError, json.JSONDecodeError) as e:
+        logger.warning("Failed to update remote agent %r: %s", agent_name, e)
+        return False
+
+    try:
+        _remote_json_request("POST", "/agents", create_payload)
+        return True
+    except HTTPError as e:
+        logger.warning("Failed to create remote agent %r: HTTP %s", agent_name, e.code)
+        return False
+    except (URLError, TimeoutError, OSError, json.JSONDecodeError) as e:
+        logger.warning("Failed to create remote agent %r: %s", agent_name, e)
+        return False
+
+
 def load_agent_config(name: str | None) -> AgentConfig | None:
     """Load the custom or default agent's config from its directory.
 
@@ -58,6 +197,10 @@ def load_agent_config(name: str | None) -> AgentConfig | None:
         return None
 
     name = validate_agent_name(name)
+    remote_data = _fetch_remote_agent_data(name)
+    if remote_data is not None:
+        return _agent_config_from_data(name, remote_data)
+
     agent_dir = get_paths().agent_dir(name)
     config_file = agent_dir / "config.yaml"
 
@@ -96,6 +239,16 @@ def load_agent_soul(agent_name: str | None) -> str | None:
     Returns:
         The SOUL.md content as a string, or None if the file does not exist.
     """
+    if agent_name:
+        agent_name = validate_agent_name(agent_name)
+        try:
+            remote_data = _fetch_remote_agent_data(agent_name)
+        except FileNotFoundError:
+            return None
+        if remote_data is not None:
+            soul = remote_data.get("soul")
+            return soul.strip() if isinstance(soul, str) and soul.strip() else None
+
     agent_dir = get_paths().agent_dir(agent_name) if agent_name else get_paths().base_dir
     soul_path = agent_dir / SOUL_FILENAME
     if not soul_path.exists():

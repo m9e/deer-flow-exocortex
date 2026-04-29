@@ -206,6 +206,8 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     app.include_router(runs.router)
 
     @app.get("/health", tags=["health"])
+    @app.get("/api/health", tags=["health"])
+    @app.get("/api/ready", tags=["health"])
     async def health_check() -> dict:
         """Health check endpoint.
 

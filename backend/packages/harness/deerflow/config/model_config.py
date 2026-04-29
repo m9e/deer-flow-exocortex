@@ -12,6 +12,10 @@ class ModelConfig(BaseModel):
         description="Class path of the model provider(e.g. langchain_openai.ChatOpenAI)",
     )
     model: str = Field(..., description="Model name")
+    provider: str | None = Field(
+        default=None,
+        description="Optional integration provider identifier (e.g. 'openai', 'kamiwaza')",
+    )
     model_config = ConfigDict(extra="allow")
     use_responses_api: bool | None = Field(
         default=None,

@@ -56,10 +56,6 @@ export function groupMessages<T>(
       continue;
     }
 
-    if (message.name === "todo_reminder") {
-      continue;
-    }
-
     if (message.type === "human") {
       groups.push({ id: message.id, type: "human", messages: [message] });
       continue;
@@ -133,19 +129,37 @@ export function extractTextFromMessage(message: Message) {
   if (typeof message.content === "string") {
     return (
       splitInlineReasoningFromAIMessage(message)?.content ??
-      message.content.trim()
+      displayContent(message, message.content)
     );
   }
   if (Array.isArray(message.content)) {
-    return message.content
+    const content = message.content
       .map((content) => (content.type === "text" ? content.text : ""))
       .join("\n")
       .trim();
+    return displayContent(message, content);
   }
   return "";
 }
 
 const THINK_TAG_RE = /<think>\s*([\s\S]*?)\s*<\/think>/g;
+const SYSTEM_REMINDER_BLOCK_RE =
+  /<system_reminder\b[^>]*>[\s\S]*?<\/system_reminder>/gi;
+const SYSTEM_REMINDER_OPEN_RE = /<system_reminder\b[^>]*>[\s\S]*$/i;
+
+export function stripInternalSystemReminderBlocks(content: string) {
+  return content
+    .replace(SYSTEM_REMINDER_BLOCK_RE, "")
+    .replace(SYSTEM_REMINDER_OPEN_RE, "")
+    .trim();
+}
+
+function displayContent(message: Message, content: string) {
+  if (message.type !== "ai") {
+    return content.trim();
+  }
+  return stripInternalSystemReminderBlocks(content);
+}
 
 function splitInlineReasoning(content: string) {
   const reasoningParts: string[] = [];
@@ -169,18 +183,22 @@ function splitInlineReasoningFromAIMessage(message: Message) {
   if (message.type !== "ai" || typeof message.content !== "string") {
     return null;
   }
-  return splitInlineReasoning(message.content);
+  const split = splitInlineReasoning(message.content);
+  return {
+    ...split,
+    content: stripInternalSystemReminderBlocks(split.content),
+  };
 }
 
 export function extractContentFromMessage(message: Message) {
   if (typeof message.content === "string") {
     return (
       splitInlineReasoningFromAIMessage(message)?.content ??
-      message.content.trim()
+      displayContent(message, message.content)
     );
   }
   if (Array.isArray(message.content)) {
-    return message.content
+    const content = message.content
       .map((content) => {
         switch (content.type) {
           case "text":
@@ -194,6 +212,7 @@ export function extractContentFromMessage(message: Message) {
       })
       .join("\n")
       .trim();
+    return displayContent(message, content);
   }
   return "";
 }
@@ -245,12 +264,12 @@ export function hasContent(message: Message) {
     return (
       (
         splitInlineReasoningFromAIMessage(message)?.content ??
-        message.content.trim()
+        displayContent(message, message.content)
       ).length > 0
     );
   }
   if (Array.isArray(message.content)) {
-    return message.content.length > 0;
+    return extractContentFromMessage(message).length > 0;
   }
   return false;
 }
@@ -328,7 +347,15 @@ export function findToolCallResult(toolCallId: string, messages: Message[]) {
 }
 
 export function isHiddenFromUIMessage(message: Message) {
-  return message.additional_kwargs?.hide_from_ui === true;
+  const content =
+    typeof message.content === "string" ? message.content.trim() : "";
+  return (
+    message.additional_kwargs?.hide_from_ui === true ||
+    message.name === "conversation_summary" ||
+    message.name === "todo_reminder" ||
+    message.name === "todo_completion_reminder" ||
+    /^<system_reminder\b[^>]*>[\s\S]*<\/system_reminder>$/i.test(content)
+  );
 }
 
 /**

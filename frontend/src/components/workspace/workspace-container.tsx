@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 
+import { KamiwazaMark } from "@/components/branding/kamiwaza-mark";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,9 +15,6 @@ import {
 } from "@/components/ui/breadcrumb";
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
-
-import { GithubIcon } from "./github-icon";
-import { Tooltip } from "./tooltip";
 
 export function WorkspaceContainer({
   className,
@@ -46,12 +44,13 @@ export function WorkspaceHeader({
   return (
     <header
       className={cn(
-        "top-0 right-0 left-0 z-20 flex h-16 shrink-0 items-center justify-between gap-2 border-b backdrop-blur-sm transition-[width,height] ease-out group-has-data-[collapsible=icon]/sidebar-wrapper:h-12",
+        "top-0 right-0 left-0 z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--kz-border-soft)] bg-[rgba(11,18,32,0.78)] backdrop-blur-sm transition-[width,height] ease-out group-has-data-[collapsible=icon]/sidebar-wrapper:h-12",
         className,
       )}
       {...props}
     >
       <div className="flex items-center gap-2 px-4">
+        <KamiwazaMark size={22} className="hidden md:inline-flex" />
         <Breadcrumb>
           <BreadcrumbList>
             {segments?.[0] && (
@@ -91,16 +90,10 @@ export function WorkspaceHeader({
         </Breadcrumb>
       </div>
       <div className="pr-4">
-        <Tooltip content={t.workspace.githubTooltip}>
-          <a
-            href="https://github.com/bytedance/deer-flow"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-75 transition hover:opacity-100"
-          >
-            <GithubIcon className="size-6" />
-          </a>
-        </Tooltip>
+        <span className="kz-pill kz-pill-emerald">
+          <span className="dot-live size-1.5" />
+          Kamiwaza
+        </span>
       </div>
     </header>
   );

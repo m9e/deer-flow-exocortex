@@ -5,6 +5,7 @@ import time
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Self
+from urllib.parse import urlparse
 
 import httpx
 import yaml
@@ -16,6 +17,11 @@ from deerflow.config.agents_api_config import AgentsApiConfig, load_agents_api_c
 from deerflow.config.checkpointer_config import CheckpointerConfig, load_checkpointer_config_from_dict
 from deerflow.config.extensions_config import ExtensionsConfig
 from deerflow.config.guardrails_config import GuardrailsConfig, load_guardrails_config_from_dict
+from deerflow.config.kamiwaza_model_env import (
+    apply_kamiwaza_env_defaults,
+    infer_model_provider,
+    normalize_kamiwaza_model_id,
+)
 from deerflow.config.memory_config import MemoryConfig, load_memory_config_from_dict
 from deerflow.config.model_config import ModelConfig
 from deerflow.config.model_list_endpoint_config import ModelListEndpointConfig
@@ -68,6 +74,15 @@ def _display_name_for_discovered_model(model_name: str) -> str:
     return model_name
 
 
+def _config_name_for_discovered_model(model_name: str) -> str:
+    parts = [part for part in model_name.split("/") if part]
+    if len(parts) == 3 and parts[0].lower() == "kamiwaza":
+        return _slugify_model_name(parts[1])
+    if len(parts) == 2 and parts[0].lower() == "kamiwaza":
+        return _slugify_model_name(parts[1])
+    return _slugify_model_name(model_name)
+
+
 def _extract_model_ids_from_payload(payload: Any) -> list[str]:
     if isinstance(payload, dict):
         data = payload.get("data")
@@ -93,6 +108,20 @@ def _extract_model_ids_from_payload(payload: Any) -> list[str]:
         seen.add(model_id)
         model_ids.append(model_id)
     return model_ids
+
+
+def _normalize_model_config_entry(model_dict: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a model config entry before validation."""
+    normalized = dict(model_dict)
+    provider = infer_model_provider(
+        str(normalized.get("model", "")),
+        base_url=str(normalized.get("base_url", "")),
+        endpoint_path=str(normalized.get("endpoint_path", "")),
+        provider=str(normalized.get("provider") or ""),
+    )
+    if provider is not None:
+        normalized["provider"] = provider
+    return apply_kamiwaza_env_defaults(normalized)
 
 
 def _make_unique_model_name(candidate: str, used_names: set[str]) -> str:
@@ -131,26 +160,93 @@ def _build_model_list_endpoint_model_configs(endpoint_config: ModelListEndpointC
     used_names: set[str] = set()
     discovered: list[ModelConfig] = []
     for model_id in model_ids:
-        name = _make_unique_model_name(_slugify_model_name(model_id), used_names)
+        canonical_model_id = normalize_kamiwaza_model_id(model_id)
+        name = _make_unique_model_name(_config_name_for_discovered_model(canonical_model_id), used_names)
         defaults = endpoint_config.invocation_defaults()
         defaults.setdefault("display_name", _display_name_for_discovered_model(model_id))
         defaults.setdefault("description", f"Discovered from {endpoint_config.url}")
-        discovered.append(
-            ModelConfig.model_validate(
-                {
-                    **defaults,
-                    "name": name,
-                    "model": model_id,
-                }
-            )
+        discovered_entry = _normalize_model_config_entry(
+            {
+                **defaults,
+                "name": name,
+                "model": model_id,
+            }
         )
+        discovered.append(ModelConfig.model_validate(discovered_entry))
     return discovered
 
 
-def _merge_model_configs(manual_models: list[ModelConfig], discovered_models: list[ModelConfig]) -> list[ModelConfig]:
-    merged = list(manual_models)
-    seen_model_ids = {model.model for model in manual_models}
-    seen_names = {model.name for model in manual_models}
+def _model_extra_value(model: ModelConfig, key: str) -> str:
+    value = getattr(model, key, None)
+    return str(value).strip() if value is not None else ""
+
+
+def _url_matches_model_endpoint(left: str, right: str) -> bool:
+    """Compare local model endpoint URLs while tolerating Docker host aliases."""
+
+    left_url = urlparse(left)
+    right_url = urlparse(right)
+    if not left_url.scheme or not right_url.scheme:
+        return left.rstrip("/") == right.rstrip("/")
+
+    local_hosts = {"host.docker.internal", "localhost", "127.0.0.1"}
+    left_host = left_url.hostname or ""
+    right_host = right_url.hostname or ""
+    hosts_match = left_host == right_host or (left_host in local_hosts and right_host in local_hosts)
+    return (
+        left_url.scheme == right_url.scheme
+        and hosts_match
+        and (left_url.port or _default_port(left_url.scheme)) == (right_url.port or _default_port(right_url.scheme))
+        and left_url.path.rstrip("/") == right_url.path.rstrip("/")
+    )
+
+
+def _default_port(scheme: str) -> int | None:
+    return {"http": 80, "https": 443}.get(scheme)
+
+
+def _is_endpoint_managed_model(model: ModelConfig, endpoint_config: ModelListEndpointConfig | None) -> bool:
+    if not endpoint_config:
+        return False
+
+    model_provider = (model.provider or "").lower()
+    if model_provider == "kamiwaza":
+        return True
+
+    model_id = (model.model or "").strip().lower()
+    if model_id.startswith("kamiwaza/"):
+        return True
+
+    endpoint_provider = str(getattr(endpoint_config, "provider", "") or "").lower()
+    if endpoint_provider == "kamiwaza" and model_provider:
+        return False
+
+    if endpoint_provider == "kamiwaza" and model.use == endpoint_config.use and not _model_extra_value(model, "base_url"):
+        return True
+
+    endpoint_base_url = (endpoint_config.base_url or "").rstrip("/")
+    model_base_url = _model_extra_value(model, "base_url").rstrip("/")
+    if not endpoint_base_url or not model_base_url or model.use != endpoint_config.use:
+        return False
+    return _url_matches_model_endpoint(endpoint_base_url, model_base_url)
+
+
+def _merge_model_configs(
+    manual_models: list[ModelConfig],
+    discovered_models: list[ModelConfig],
+    endpoint_config: ModelListEndpointConfig | None = None,
+) -> list[ModelConfig]:
+    discovered_model_ids = {model.model for model in discovered_models}
+    if discovered_models:
+        merged = [
+            model
+            for model in manual_models
+            if not _is_endpoint_managed_model(model, endpoint_config) or model.model in discovered_model_ids
+        ]
+    else:
+        merged = list(manual_models)
+    seen_model_ids = {model.model for model in merged}
+    seen_names = {model.name for model in merged}
 
     for model in discovered_models:
         if model.model in seen_model_ids:
@@ -284,11 +380,14 @@ class AppConfig(BaseModel):
         # Load extensions config separately (it's in a different file)
         extensions_config = ExtensionsConfig.from_file()
         config_data["extensions"] = extensions_config.model_dump()
+        models = config_data.get("models", [])
+        if isinstance(models, list):
+            config_data["models"] = [_normalize_model_config_entry(model) if isinstance(model, dict) else model for model in models]
 
         result = cls.model_validate(config_data)
         if result.model_list_endpoint is not None:
             discovered_models = _build_model_list_endpoint_model_configs(result.model_list_endpoint)
-            result.models = _merge_model_configs(result.models, discovered_models)
+            result.models = _merge_model_configs(result.models, discovered_models, result.model_list_endpoint)
         return result
 
     @classmethod

@@ -8,12 +8,14 @@ from typing import Protocol, runtime_checkable
 
 from langchain.agents import AgentState
 from langchain.agents.middleware import SummarizationMiddleware
-from langchain_core.messages import AnyMessage, RemoveMessage
+from langchain_core.messages import AnyMessage, HumanMessage, RemoveMessage
 from langgraph.config import get_config
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langgraph.runtime import Runtime
 
 logger = logging.getLogger(__name__)
+
+_SUMMARY_ERROR_PREFIX = "Error generating summary:"
 
 
 @dataclass(frozen=True)
@@ -91,6 +93,9 @@ class DeerFlowSummarizationMiddleware(SummarizationMiddleware):
         messages_to_summarize, preserved_messages = self._partition_messages(messages, cutoff_index)
         self._fire_hooks(messages_to_summarize, preserved_messages, runtime)
         summary = self._create_summary(messages_to_summarize)
+        if _summary_generation_failed(summary):
+            logger.warning("conversation summarization failed; retaining original history: %s", summary)
+            return None
         new_messages = self._build_new_messages(summary)
 
         return {
@@ -116,6 +121,9 @@ class DeerFlowSummarizationMiddleware(SummarizationMiddleware):
         messages_to_summarize, preserved_messages = self._partition_messages(messages, cutoff_index)
         self._fire_hooks(messages_to_summarize, preserved_messages, runtime)
         summary = await self._acreate_summary(messages_to_summarize)
+        if _summary_generation_failed(summary):
+            logger.warning("conversation summarization failed; retaining original history: %s", summary)
+            return None
         new_messages = self._build_new_messages(summary)
 
         return {
@@ -149,3 +157,16 @@ class DeerFlowSummarizationMiddleware(SummarizationMiddleware):
             except Exception:
                 hook_name = getattr(hook, "__name__", None) or type(hook).__name__
                 logger.exception("before_summarization hook %s failed", hook_name)
+
+    def _build_new_messages(self, summary: str) -> list[HumanMessage]:
+        return [
+            HumanMessage(
+                name="conversation_summary",
+                additional_kwargs={"hide_from_ui": True},
+                content=f"Here is a summary of the conversation to date:\n\n{summary}",
+            )
+        ]
+
+
+def _summary_generation_failed(summary: str) -> bool:
+    return summary.strip().startswith(_SUMMARY_ERROR_PREFIX)

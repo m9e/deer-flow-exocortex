@@ -3,17 +3,24 @@
 import abc
 import json
 import logging
+import os
 import threading
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from deerflow.config.agents_config import AGENT_NAME_PATTERN
 from deerflow.config.memory_config import get_memory_config
 from deerflow.config.paths import get_paths
 
 logger = logging.getLogger(__name__)
+
+REMOTE_MEMORY_API_BASE_URL_ENV = "DEER_FLOW_MEMORY_API_BASE_URL"
+REMOTE_MEMORY_API_TIMEOUT_SECONDS_ENV = "DEER_FLOW_MEMORY_API_TIMEOUT_SECONDS"
 
 
 def utc_now_iso_z() -> str:
@@ -164,6 +171,113 @@ class FileMemoryStorage(MemoryStorage):
             return False
 
 
+def _remote_memory_api_base_url() -> str | None:
+    base_url = os.getenv(REMOTE_MEMORY_API_BASE_URL_ENV, "").strip().rstrip("/")
+    if base_url:
+        return base_url
+
+    if not os.getenv("LANGGRAPH_JOBS_PER_WORKER"):
+        return None
+    if channel_gateway_url := os.getenv("DEER_FLOW_CHANNELS_GATEWAY_URL", "").strip().rstrip("/"):
+        return channel_gateway_url
+    if deployment_id := os.getenv("KAMIWAZA_DEPLOYMENT_ID", "").strip():
+        return f"http://{deployment_id}-gateway:8001"
+    return None
+
+
+def _remote_memory_api_timeout_seconds() -> float:
+    raw = os.getenv(REMOTE_MEMORY_API_TIMEOUT_SECONDS_ENV, "5.0").strip()
+    try:
+        timeout = float(raw)
+    except ValueError:
+        logger.warning(
+            "Invalid %s=%r; using 5.0s",
+            REMOTE_MEMORY_API_TIMEOUT_SECONDS_ENV,
+            raw,
+        )
+        return 5.0
+    return max(timeout, 0.1)
+
+
+def _remote_memory_api_path(path: str, agent_name: str | None = None) -> str:
+    if not agent_name:
+        return path
+    return f"{path}?{urlencode({'agent_name': agent_name})}"
+
+
+def _remote_memory_api_url(path: str, agent_name: str | None = None) -> str | None:
+    base_url = _remote_memory_api_base_url()
+    if not base_url:
+        return None
+    api_prefix = "" if base_url.endswith("/api") else "/api"
+    return f"{base_url}{api_prefix}{_remote_memory_api_path(path, agent_name)}"
+
+
+class RemoteMemoryStorage(MemoryStorage):
+    """Gateway-backed memory storage for split App Garden service volumes."""
+
+    def __init__(self):
+        self._base_url = _remote_memory_api_base_url()
+        if not self._base_url:
+            raise ValueError(f"{REMOTE_MEMORY_API_BASE_URL_ENV} is not configured")
+
+    def _validate_agent_name(self, agent_name: str | None) -> None:
+        if agent_name is None:
+            return
+        if not agent_name or not AGENT_NAME_PATTERN.match(agent_name):
+            raise ValueError(f"Invalid agent name {agent_name!r}: names must match {AGENT_NAME_PATTERN.pattern}")
+
+    def _json_request(
+        self,
+        method: str,
+        path: str,
+        agent_name: str | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        self._validate_agent_name(agent_name)
+        url = _remote_memory_api_url(path, agent_name)
+        if not url:
+            raise ValueError(f"{REMOTE_MEMORY_API_BASE_URL_ENV} is not configured")
+
+        body = None
+        headers = {"Accept": "application/json"}
+        if payload is not None:
+            body = json.dumps(payload).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+
+        request = Request(url, data=body, headers=headers, method=method)
+        with urlopen(request, timeout=_remote_memory_api_timeout_seconds()) as response:
+            response_body = response.read()
+            if not response_body:
+                return {}
+            data = json.loads(response_body.decode("utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError("Remote memory API returned non-object JSON")
+            return data
+
+    def load(self, agent_name: str | None = None) -> dict[str, Any]:
+        try:
+            return self._json_request("GET", "/memory", agent_name)
+        except (HTTPError, URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as e:
+            logger.warning("Failed to load remote memory for agent %r: %s", agent_name, e)
+            return create_empty_memory()
+
+    def reload(self, agent_name: str | None = None) -> dict[str, Any]:
+        try:
+            return self._json_request("POST", "/memory/reload", agent_name)
+        except (HTTPError, URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as e:
+            logger.warning("Failed to reload remote memory for agent %r: %s", agent_name, e)
+            return create_empty_memory()
+
+    def save(self, memory_data: dict[str, Any], agent_name: str | None = None) -> bool:
+        try:
+            self._json_request("POST", "/memory/import", agent_name, memory_data)
+            return True
+        except (HTTPError, URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as e:
+            logger.warning("Failed to save remote memory for agent %r: %s", agent_name, e)
+            return False
+
+
 _storage_instance: MemoryStorage | None = None
 _storage_lock = threading.Lock()
 
@@ -176,6 +290,10 @@ def get_memory_storage() -> MemoryStorage:
 
     with _storage_lock:
         if _storage_instance is not None:
+            return _storage_instance
+
+        if _remote_memory_api_base_url():
+            _storage_instance = RemoteMemoryStorage()
             return _storage_instance
 
         config = get_memory_config()

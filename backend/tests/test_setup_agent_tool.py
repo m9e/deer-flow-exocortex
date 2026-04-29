@@ -38,3 +38,18 @@ def test_setup_agent_rejects_absolute_agent_name_before_writing(tmp_path, monkey
     assert "Invalid agent name" in messages[0].content
     assert not (tmp_path / "agents").exists()
     assert not (Path(absolute_agent) / "SOUL.md").exists()
+
+
+def test_setup_agent_syncs_remote_store_when_configured(tmp_path, monkeypatch):
+    monkeypatch.setenv("DEER_FLOW_HOME", str(tmp_path))
+    monkeypatch.setenv("DEER_FLOW_AGENTS_API_BASE_URL", "http://gateway:8001")
+    runtime = _DummyRuntime(context={"agent_name": "sync-agent"}, tool_call_id="tool-3")
+
+    from unittest.mock import patch
+
+    with patch("deerflow.tools.builtins.setup_agent_tool.sync_agent_to_remote_store", return_value=True) as sync_remote:
+        result = setup_agent.func(soul="test soul", description="desc", runtime=runtime)
+
+    sync_remote.assert_called_once_with("sync-agent", soul="test soul", description="desc")
+    assert "created successfully" in result.update["messages"][0].content
+    assert (tmp_path / "agents" / "sync-agent" / "SOUL.md").read_text(encoding="utf-8") == "test soul"

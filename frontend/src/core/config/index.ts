@@ -1,5 +1,21 @@
 import { env } from "@/env";
 
+function getRuntimeAppBasePathFromLocation() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.location.pathname.match(/^(\/runtime\/apps\/[^/]+)/)?.[1] ?? "";
+}
+
+export function getAppBasePath() {
+  const basePath = env.NEXT_PUBLIC_APP_BASE_PATH?.replace(/\/+$/, "") ?? "";
+  if (basePath) {
+    return basePath.startsWith("/") ? basePath : `/${basePath}`;
+  }
+  return getRuntimeAppBasePathFromLocation();
+}
+
 function getBaseOrigin() {
   if (typeof window !== "undefined") {
     return window.location.origin;
@@ -8,13 +24,17 @@ function getBaseOrigin() {
   return "http://localhost:2026";
 }
 
+function getAppOriginPath() {
+  return `${getBaseOrigin()}${getAppBasePath()}`;
+}
+
 export function getBackendBaseURL() {
   if (env.NEXT_PUBLIC_BACKEND_BASE_URL) {
     return new URL(env.NEXT_PUBLIC_BACKEND_BASE_URL, getBaseOrigin())
       .toString()
       .replace(/\/+$/, "");
   } else {
-    return "";
+    return getAppBasePath();
   }
 }
 
@@ -32,9 +52,33 @@ export function getLangGraphBaseURL(isMock?: boolean) {
   } else {
     // LangGraph SDK requires a full URL, construct it from current origin
     if (typeof window !== "undefined") {
-      return `${window.location.origin}/api/langgraph`;
+      return `${getAppOriginPath()}/api/langgraph`;
     }
     // Fallback for SSR
-    return "http://localhost:2026/api/langgraph";
+    return `${getAppOriginPath()}/api/langgraph`;
   }
+}
+
+export function getAppStorageNamespace() {
+  return getAppBasePath() || "/";
+}
+
+export function getAppStorageKey(key: string) {
+  return `deerflow:${getAppStorageNamespace()}:${key}`;
+}
+
+export function withAppBasePath(path: string) {
+  if (!path.startsWith("/")) {
+    return path;
+  }
+
+  const basePath = getAppBasePath();
+  if (!basePath || path === basePath || path.startsWith(`${basePath}/`)) {
+    return path;
+  }
+  return `${basePath}${path}`;
+}
+
+export function getAppCookiePath() {
+  return getAppBasePath() || "/";
 }

@@ -1,9 +1,9 @@
 import {
   DEFAULT_LOCAL_SETTINGS,
-  LOCAL_SETTINGS_KEY,
-  THREAD_MODEL_KEY_PREFIX,
   getLocalSettings,
+  getLocalSettingsStorageKey,
   getThreadModelName,
+  getThreadModelStorageKeyPrefix,
   saveLocalSettings,
   saveThreadModelName,
   type LocalSettings,
@@ -75,17 +75,18 @@ function handleStorage(event: StorageEvent) {
     return;
   }
 
-  if (event.key === LOCAL_SETTINGS_KEY) {
+  if (event.key === getLocalSettingsStorageKey()) {
     baseSettings = getLocalSettings();
     emitChange();
     return;
   }
 
-  if (!event.key.startsWith(THREAD_MODEL_KEY_PREFIX)) {
+  const threadModelKeyPrefix = getThreadModelStorageKeyPrefix();
+  if (!event.key.startsWith(threadModelKeyPrefix)) {
     return;
   }
 
-  const threadId = event.key.slice(THREAD_MODEL_KEY_PREFIX.length);
+  const threadId = event.key.slice(threadModelKeyPrefix.length);
   threadModelNames.set(threadId, getThreadModelName(threadId));
   emitChange();
 }

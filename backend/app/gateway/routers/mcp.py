@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from deerflow.config.extensions_config import ExtensionsConfig, get_extensions_config, reload_extensions_config
+from deerflow.mcp.kamiwaza_discovery import discover_kamiwaza_mcp_servers, discovery_enabled
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["mcp"])
@@ -91,8 +92,40 @@ async def get_mcp_configuration() -> McpConfigResponse:
         ```
     """
     config = get_extensions_config()
+    mcp_servers = dict(config.mcp_servers)
+    mcp_servers.update(await discover_kamiwaza_mcp_servers())
 
-    return McpConfigResponse(mcp_servers={name: McpServerConfigResponse(**server.model_dump()) for name, server in config.mcp_servers.items()})
+    return McpConfigResponse(mcp_servers={name: McpServerConfigResponse(**server.model_dump()) for name, server in mcp_servers.items()})
+
+
+@router.get(
+    "/mcp/toolshed/available",
+    summary="List Kamiwaza ToolShed MCP Servers",
+    description="Discover running Kamiwaza tool extensions and return them as MCP server configs.",
+)
+@router.get(
+    "/v1/mcp/toolshed/available",
+    summary="List Kamiwaza ToolShed MCP Servers",
+    description="Kaizen-compatible discovery route for running Kamiwaza tool extensions.",
+)
+async def list_toolshed_mcp_servers() -> dict:
+    if not discovery_enabled():
+        return {"mcps": [], "total": 0, "enabled": False}
+
+    servers = await discover_kamiwaza_mcp_servers()
+    mcps = [
+        {
+            "id": name,
+            "name": name,
+            "description": server.description,
+            "status": "DEPLOYED",
+            "url": server.url,
+            "type": server.type,
+            "tags": ["mcp", "kamiwaza"],
+        }
+        for name, server in sorted(servers.items())
+    ]
+    return {"mcps": mcps, "total": len(mcps), "enabled": True}
 
 
 @router.put(

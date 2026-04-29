@@ -46,6 +46,7 @@ import {
   createAgent,
   getAgent,
 } from "@/core/agents/api";
+import { getAppStorageKey } from "@/core/config";
 import { useI18n } from "@/core/i18n/hooks";
 import { useModels } from "@/core/models/hooks";
 import type { AgentThreadContext } from "@/core/threads";
@@ -175,11 +176,12 @@ export default function NewAgentPage() {
     if (typeof window === "undefined" || step !== "chat") {
       return;
     }
-    if (window.localStorage.getItem(SAVE_HINT_STORAGE_KEY) === "1") {
+    const storageKey = getAppStorageKey(SAVE_HINT_STORAGE_KEY);
+    if (window.localStorage.getItem(storageKey) === "1") {
       return;
     }
     setShowSaveHint(true);
-    window.localStorage.setItem(SAVE_HINT_STORAGE_KEY, "1");
+    window.localStorage.setItem(storageKey, "1");
   }, [step]);
 
   useEffect(() => {

@@ -52,6 +52,10 @@ examples/
 assets/
 tests/
 *.log
+backend/.deer-flow
+backend/.langgraph_api
+.deer-flow
+.langgraph_api
 
 # Exclude directories not needed in Docker context
 # Frontend build only needs frontend/
@@ -59,7 +63,6 @@ tests/
 scripts/
 logs/
 docker/
-skills/
 frontend/.next
 frontend/node_modules
 backend/.venv

@@ -263,8 +263,32 @@ def test_update_memory_fact_route_preserves_omitted_fields() -> None:
         content="User prefers spaces",
         category=None,
         confidence=None,
+        agent_name=None,
     )
     assert response.json()["facts"] == updated_memory["facts"]
+
+
+def test_memory_routes_pass_agent_name_scope() -> None:
+    app = FastAPI()
+    app.include_router(memory.router)
+    exported_memory = _sample_memory()
+
+    with patch("app.gateway.routers.memory.get_memory_data", return_value=exported_memory) as get_memory_data:
+        with TestClient(app) as client:
+            response = client.get("/api/memory?agent_name=superagent")
+
+    assert response.status_code == 200
+    get_memory_data.assert_called_once_with("superagent")
+
+
+def test_memory_routes_reject_invalid_agent_name_scope() -> None:
+    app = FastAPI()
+    app.include_router(memory.router)
+
+    with TestClient(app) as client:
+        response = client.get("/api/memory?agent_name=bad_name")
+
+    assert response.status_code == 422
 
 
 def test_update_memory_fact_route_returns_404_for_missing_fact() -> None:

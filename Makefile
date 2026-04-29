@@ -1,9 +1,17 @@
 # DeerFlow - Unified Development Environment
 
-.PHONY: help config config-upgrade check install setup doctor dev dev-pro dev-daemon dev-daemon-pro start start-pro start-daemon start-daemon-pro stop up up-pro down clean docker-init docker-start docker-start-pro docker-stop docker-logs docker-logs-frontend docker-logs-gateway
+.PHONY: help config config-upgrade check install setup doctor dev dev-pro dev-daemon dev-daemon-pro start start-pro start-daemon start-daemon-pro stop up up-pro down clean docker-init docker-start docker-start-pro docker-stop docker-logs docker-logs-frontend docker-logs-gateway build build-no-cache appgarden-build appgarden-build-no-cache build-registry kamiwaza-push kamiwaza-list kind-load-images appgarden-validate
 
 BASH ?= bash
 BACKEND_UV_RUN = cd backend && uv run
+DOCKER_COMPOSE ?= $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo "docker-compose"; fi)
+APPGARDEN_DIR ?= appgarden
+APPGARDEN_TYPE ?= app
+APPGARDEN_NAME ?= deer-flow
+APPGARDEN_IMAGE_PREFIX ?= ghcr.io/kamiwaza-internal/deer-flow-exocortex/images
+APPGARDEN_REPO_VERSION ?= 3
+APPGARDEN_COMPOSE ?= $(APPGARDEN_DIR)/apps/$(APPGARDEN_NAME)/docker-compose.yml
+STAGE ?= dev
 
 # Detect OS for Windows compatibility
 ifeq ($(OS),Windows_NT)
@@ -40,6 +48,12 @@ help:
 	@echo "  make up              - Build and start production Docker services (localhost:2026)"
 	@echo "  make up-pro          - Build and start production Docker in Gateway mode (experimental)"
 	@echo "  make down            - Stop and remove production Docker containers"
+	@echo ""
+	@echo "App Garden Commands:"
+	@echo "  make build-no-cache  - Build Deer Flow App Garden images without Docker cache"
+	@echo "  make build-registry  - Generate App Garden registry artifacts"
+	@echo "  make kamiwaza-push   - Push the Deer Flow template to local Kamiwaza"
+	@echo "  make appgarden-validate - Validate App Garden metadata and compose"
 	@echo ""
 	@echo "Docker Development Commands:"
 	@echo "  make docker-init     - Pull the sandbox image"
@@ -213,3 +227,32 @@ up-pro:
 # Stop and remove production containers
 down:
 	@$(RUN_WITH_GIT_BASH) ./scripts/deploy.sh down
+
+# ==========================================
+# App Garden Commands
+# ==========================================
+
+appgarden-build:
+	@IMAGE_PREFIX=$(APPGARDEN_IMAGE_PREFIX) $(DOCKER_COMPOSE) -f $(APPGARDEN_COMPOSE) build
+
+appgarden-build-no-cache:
+	@IMAGE_PREFIX=$(APPGARDEN_IMAGE_PREFIX) $(DOCKER_COMPOSE) -f $(APPGARDEN_COMPOSE) build --no-cache
+
+build: appgarden-build
+
+build-no-cache: appgarden-build-no-cache
+
+appgarden-validate:
+	@$(MAKE) -C $(APPGARDEN_DIR) validate TYPE=$(APPGARDEN_TYPE) NAME=$(APPGARDEN_NAME) IMAGE_PREFIX=$(APPGARDEN_IMAGE_PREFIX) REPO_VERSION=$(APPGARDEN_REPO_VERSION)
+
+build-registry:
+	@$(MAKE) -C $(APPGARDEN_DIR) build-registry IMAGE_PREFIX=$(APPGARDEN_IMAGE_PREFIX) REPO_VERSION=$(APPGARDEN_REPO_VERSION) STAGE=$(STAGE)
+
+kamiwaza-push:
+	@$(MAKE) -C $(APPGARDEN_DIR) kamiwaza-push TYPE=$(APPGARDEN_TYPE) NAME=$(APPGARDEN_NAME) IMAGE_PREFIX=$(APPGARDEN_IMAGE_PREFIX) REPO_VERSION=$(APPGARDEN_REPO_VERSION) STAGE=$(STAGE) KAMIWAZA_PUSH_CHECK_LOCAL_IMAGES=$(or $(KAMIWAZA_PUSH_CHECK_LOCAL_IMAGES),1)
+
+kamiwaza-list:
+	@$(MAKE) -C $(APPGARDEN_DIR) kamiwaza-list IMAGE_PREFIX=$(APPGARDEN_IMAGE_PREFIX) REPO_VERSION=$(APPGARDEN_REPO_VERSION) STAGE=$(STAGE)
+
+kind-load-images:
+	@$(MAKE) -C $(APPGARDEN_DIR) kind-load-images IMAGE_PREFIX=$(APPGARDEN_IMAGE_PREFIX) REPO_VERSION=$(APPGARDEN_REPO_VERSION) STAGE=$(STAGE)

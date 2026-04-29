@@ -45,6 +45,12 @@ RUN if [ -n "${NPM_REGISTRY}" ]; then \
 RUN pnpm config set store-dir ${PNPM_STORE_PATH}
 RUN if [ -n "${NPM_REGISTRY}" ]; then pnpm config set registry "${NPM_REGISTRY}"; fi
 WORKDIR /app
-COPY --from=builder /app/frontend ./frontend
+COPY --from=builder --chown=node:node /app/frontend ./frontend
+COPY frontend/docker-entrypoint.sh /usr/local/bin/deer-flow-frontend-entrypoint
+RUN chmod +x /usr/local/bin/deer-flow-frontend-entrypoint
+WORKDIR /app/frontend
+ENV HOME=/home/node
+USER node
 EXPOSE 3000
-CMD ["sh", "-c", "cd /app/frontend && pnpm start"]
+ENTRYPOINT ["deer-flow-frontend-entrypoint"]
+CMD ["pnpm", "start"]

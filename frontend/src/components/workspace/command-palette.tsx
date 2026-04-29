@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  BotIcon,
   KeyboardIcon,
   MessageSquarePlusIcon,
+  SearchIcon,
   SettingsIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -88,31 +90,78 @@ export function CommandPalette() {
   return (
     <>
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-      <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder={t.shortcuts.searchActions} />
-        <CommandList>
+      <CommandDialog
+        open={open}
+        onOpenChange={setOpen}
+        className="flux-border overflow-hidden rounded-[var(--kz-r-lg)] border-[var(--kz-border)] bg-[var(--kz-surface)] shadow-[var(--kz-shadow-hero)] sm:max-w-2xl"
+      >
+        <div className="border-b border-[var(--kz-border-soft)] px-2 pt-2">
+          <div className="eyebrow-muted px-2 py-1">Command</div>
+          <CommandInput
+            className="text-[var(--kz-text)]"
+            placeholder={t.shortcuts.searchActions}
+          />
+        </div>
+        <CommandList className="max-h-[420px] p-2">
           <CommandEmpty>{t.shortcuts.noResults}</CommandEmpty>
-          <CommandGroup heading={t.shortcuts.actions}>
-            <CommandItem onSelect={handleNewChat}>
-              <MessageSquarePlusIcon className="mr-2 h-4 w-4" />
+          <CommandGroup heading="Suggested">
+            <CommandItem
+              className="rounded-[var(--kz-r-sm)] py-3"
+              onSelect={handleNewChat}
+            >
+              <MessageSquarePlusIcon className="mr-2 h-4 w-4 text-[var(--kz-primary-2)]" />
               {t.sidebar.newChat}
               <CommandShortcut>
                 {metaKey}
                 {shiftKey}N
               </CommandShortcut>
             </CommandItem>
-            <CommandItem onSelect={handleOpenSettings}>
-              <SettingsIcon className="mr-2 h-4 w-4" />
+            <CommandItem
+              className="rounded-[var(--kz-r-sm)] py-3"
+              onSelect={handleOpenSettings}
+            >
+              <SettingsIcon className="mr-2 h-4 w-4 text-[var(--kz-text-3)]" />
               {t.common.settings}
               <CommandShortcut>{metaKey},</CommandShortcut>
             </CommandItem>
-            <CommandItem onSelect={handleShowShortcuts}>
-              <KeyboardIcon className="mr-2 h-4 w-4" />
+          </CommandGroup>
+          <CommandGroup heading="Workspace">
+            <CommandItem
+              className="rounded-[var(--kz-r-sm)] py-3"
+              onSelect={handleShowShortcuts}
+            >
+              <KeyboardIcon className="mr-2 h-4 w-4 text-[var(--kz-text-3)]" />
               {t.shortcuts.keyboardShortcuts}
               <CommandShortcut>{metaKey}/</CommandShortcut>
             </CommandItem>
+            <CommandItem
+              className="rounded-[var(--kz-r-sm)] py-3"
+              onSelect={() => {
+                router.push("/workspace/agents");
+                setOpen(false);
+              }}
+            >
+              <BotIcon className="mr-2 h-4 w-4 text-[var(--kz-text-3)]" />
+              {t.sidebar.agents}
+              <CommandShortcut>@</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              className="rounded-[var(--kz-r-sm)] py-3"
+              onSelect={() => {
+                router.push("/workspace/chats");
+                setOpen(false);
+              }}
+            >
+              <SearchIcon className="mr-2 h-4 w-4 text-[var(--kz-text-3)]" />
+              {t.sidebar.chats}
+              <CommandShortcut>#</CommandShortcut>
+            </CommandItem>
           </CommandGroup>
         </CommandList>
+        <div className="flex items-center justify-between border-t border-[var(--kz-border-soft)] px-4 py-2 text-[11px] text-[var(--kz-text-4)]">
+          <span>Use sigils: &gt; actions, @ agents, # chats</span>
+          <span className="font-mono">{metaKey}K</span>
+        </div>
       </CommandDialog>
 
       <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>

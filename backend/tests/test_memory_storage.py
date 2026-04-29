@@ -8,6 +8,7 @@ import pytest
 from deerflow.agents.memory.storage import (
     FileMemoryStorage,
     MemoryStorage,
+    RemoteMemoryStorage,
     create_empty_memory,
     get_memory_storage,
 )
@@ -154,6 +155,14 @@ class TestGetMemoryStorage:
             storage = get_memory_storage()
             assert isinstance(storage, FileMemoryStorage)
 
+    def test_returns_remote_memory_storage_when_api_base_url_is_configured(self, monkeypatch):
+        """App Garden LangGraph should use gateway-backed memory storage."""
+        monkeypatch.setenv("DEER_FLOW_MEMORY_API_BASE_URL", "http://gateway:8001")
+
+        storage = get_memory_storage()
+
+        assert isinstance(storage, RemoteMemoryStorage)
+
     def test_falls_back_to_file_memory_storage_on_error(self):
         """Should fall back to FileMemoryStorage if configured storage fails to load."""
         with patch("deerflow.agents.memory.storage.get_memory_config", return_value=MemoryConfig(storage_class="non.existent.StorageClass")):
@@ -201,3 +210,47 @@ class TestGetMemoryStorage:
         with patch("deerflow.agents.memory.storage.get_memory_config", return_value=MemoryConfig(storage_class="builtins.dict")):
             storage = get_memory_storage()
             assert isinstance(storage, FileMemoryStorage)
+
+
+class TestRemoteMemoryStorage:
+    """Test gateway-backed memory storage."""
+
+    def test_save_posts_agent_scoped_memory_to_gateway(self, monkeypatch):
+        monkeypatch.setenv("DEER_FLOW_MEMORY_API_BASE_URL", "http://gateway:8001")
+        calls = []
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b'{"version":"1.0","lastUpdated":"2026-01-01T00:00:00Z","user":{},"history":{},"facts":[]}'
+
+        def fake_urlopen(request, timeout):
+            calls.append((request.full_url, request.get_method(), request.data, timeout))
+            return Response()
+
+        monkeypatch.setattr("deerflow.agents.memory.storage.urlopen", fake_urlopen)
+
+        storage = RemoteMemoryStorage()
+        assert storage.save(create_empty_memory(), "superagent") is True
+
+        assert calls[0][0] == "http://gateway:8001/api/memory/import?agent_name=superagent"
+        assert calls[0][1] == "POST"
+
+    def test_load_uses_empty_memory_when_gateway_is_unavailable(self, monkeypatch):
+        monkeypatch.setenv("DEER_FLOW_MEMORY_API_BASE_URL", "http://gateway:8001")
+
+        def fake_urlopen(_request, timeout):
+            raise TimeoutError("timed out")
+
+        monkeypatch.setattr("deerflow.agents.memory.storage.urlopen", fake_urlopen)
+
+        storage = RemoteMemoryStorage()
+        memory = storage.load("superagent")
+
+        assert memory["version"] == "1.0"
+        assert memory["facts"] == []

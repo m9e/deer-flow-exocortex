@@ -130,6 +130,7 @@ class TestBeforeModel:
         assert len(msgs) == 1
         assert isinstance(msgs[0], HumanMessage)
         assert msgs[0].name == "todo_reminder"
+        assert msgs[0].additional_kwargs["hide_from_ui"] is True
 
     def test_reminder_contains_formatted_todos(self):
         mw = TodoMiddleware()
@@ -248,6 +249,7 @@ class TestAfterModel:
         reminder = result["messages"][0]
         assert isinstance(reminder, HumanMessage)
         assert reminder.name == "todo_completion_reminder"
+        assert reminder.additional_kwargs["hide_from_ui"] is True
         assert "Step 2" in reminder.content
         assert "Step 3" in reminder.content
 

@@ -87,6 +87,7 @@ export interface Translations {
     searchModels: string;
     surpriseMe: string;
     surpriseMePrompt: string;
+    surpriseMeDescription: string;
     followupLoading: string;
     followupConfirmTitle: string;
     followupConfirmDescription: string;
@@ -94,6 +95,7 @@ export interface Translations {
     followupConfirmReplace: string;
     suggestions: {
       suggestion: string;
+      description?: string;
       prompt: string;
       icon: LucideIcon;
     }[];

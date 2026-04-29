@@ -27,6 +27,7 @@ import { useNotification } from "@/core/notification/hooks";
 import { useThreadSettings } from "@/core/settings";
 import { useThreadStream } from "@/core/threads/hooks";
 import { textOfMessage } from "@/core/threads/utils";
+import { withAppBasePath } from "@/core/config";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +55,11 @@ export default function ChatPage() {
       setThreadId(createdThreadId);
       setIsNewThread(false);
       // ! Important: Never use next.js router for navigation in this case, otherwise it will cause the thread to re-mount and lose all states. Use native history API instead.
-      history.replaceState(null, "", `/workspace/chats/${createdThreadId}`);
+      history.replaceState(
+        null,
+        "",
+        withAppBasePath(`/workspace/chats/${createdThreadId}`),
+      );
     },
     onFinish: (state) => {
       if (document.hidden || !document.hasFocus()) {
@@ -95,16 +100,22 @@ export default function ChatPage() {
         <div className="relative flex size-full min-h-0 justify-between">
           <header
             className={cn(
-              "absolute top-0 right-0 left-0 z-30 flex h-12 shrink-0 items-center px-4",
+              "absolute top-0 right-0 left-0 z-30 flex h-12 shrink-0 items-center border-b border-[var(--kz-border-soft)] px-4",
               isNewThread
-                ? "bg-background/0 backdrop-blur-none"
-                : "bg-background/80 shadow-xs backdrop-blur",
+                ? "bg-background/0 border-transparent backdrop-blur-none"
+                : "bg-[rgba(11,18,32,0.78)] shadow-xs backdrop-blur",
             )}
           >
             <div className="flex w-full items-center text-sm font-medium">
               <ThreadTitle threadId={threadId} thread={thread} />
             </div>
             <div className="flex items-center gap-2">
+              {thread.isLoading && (
+                <span className="kz-pill kz-pill-emerald">
+                  <span className="dot-live size-1.5" />
+                  streaming
+                </span>
+              )}
               <TokenUsageIndicator
                 enabled={tokenUsageEnabled}
                 messages={thread.messages}
@@ -128,9 +139,7 @@ export default function ChatPage() {
                 className={cn(
                   "relative w-full",
                   isNewThread && "-translate-y-[calc(50vh-96px)]",
-                  isNewThread
-                    ? "max-w-(--container-width-sm)"
-                    : "max-w-(--container-width-md)",
+                  "max-w-(--container-width-md)",
                 )}
               >
                 <div className="absolute -top-4 right-0 left-0 z-0">
@@ -146,7 +155,7 @@ export default function ChatPage() {
                 </div>
                 {mounted ? (
                   <InputBox
-                    className={cn("bg-background/5 w-full -translate-y-4")}
+                    className={cn("w-full -translate-y-4")}
                     isNewThread={isNewThread}
                     threadId={threadId}
                     autoFocus={isNewThread}

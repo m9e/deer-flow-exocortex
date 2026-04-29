@@ -202,6 +202,47 @@ class TestLoadAgentConfig:
 
         assert cfg.name == "legacy-agent"
 
+    def test_load_config_uses_remote_agent_store_when_configured(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("DEER_FLOW_AGENTS_API_BASE_URL", "http://gateway:8001")
+
+        from deerflow.config import agents_config
+
+        remote_data = {
+            "name": "remote-agent",
+            "description": "Remote description",
+            "model": "big-smart",
+            "tool_groups": ["bash"],
+            "skills": ["chart-visualization"],
+            "soul": "Remote soul",
+        }
+        with (
+            patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(tmp_path)),
+            patch.object(agents_config, "_fetch_remote_agent_data", return_value=remote_data),
+        ):
+            cfg = agents_config.load_agent_config("remote-agent")
+
+        assert cfg.name == "remote-agent"
+        assert cfg.description == "Remote description"
+        assert cfg.model == "big-smart"
+        assert cfg.tool_groups == ["bash"]
+        assert cfg.skills == ["chart-visualization"]
+
+    def test_load_config_infers_appgarden_gateway_store_in_langgraph(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("DEER_FLOW_AGENTS_API_BASE_URL", raising=False)
+        monkeypatch.setenv("LANGGRAPH_JOBS_PER_WORKER", "4")
+        monkeypatch.setenv("KAMIWAZA_DEPLOYMENT_ID", "deer-flow-uat-db9bd5cc")
+
+        from deerflow.config import agents_config
+
+        with (
+            patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(tmp_path)),
+            patch.object(agents_config, "_fetch_remote_agent_data", return_value={"name": "remote-agent", "description": "Remote"}),
+        ):
+            cfg = agents_config.load_agent_config("remote-agent")
+
+        assert cfg.description == "Remote"
+        assert agents_config._remote_agents_api_base_url() == "http://deer-flow-uat-db9bd5cc-gateway:8001"
+
 
 # ===========================================================================
 # 4. load_agent_soul
@@ -248,6 +289,19 @@ class TestLoadAgentSoul:
             soul = load_agent_soul(cfg.name)
 
         assert soul is None
+
+    def test_load_soul_uses_remote_agent_store_when_configured(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("DEER_FLOW_AGENTS_API_BASE_URL", "http://gateway:8001")
+
+        from deerflow.config import agents_config
+
+        with (
+            patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(tmp_path)),
+            patch.object(agents_config, "_fetch_remote_agent_data", return_value={"name": "remote-agent", "soul": "  Remote soul  "}),
+        ):
+            soul = agents_config.load_agent_soul("remote-agent")
+
+        assert soul == "Remote soul"
 
 
 # ===========================================================================
@@ -526,6 +580,7 @@ class TestAgentsAPI:
             "description": "Specialized agent",
             "model": "deepseek-v3",
             "tool_groups": ["file:read", "bash"],
+            "skills": ["chart-visualization"],
             "soul": "You are specialized.",
         }
         response = agent_client.post("/api/agents", json=payload)
@@ -533,6 +588,7 @@ class TestAgentsAPI:
         data = response.json()
         assert data["model"] == "deepseek-v3"
         assert data["tool_groups"] == ["file:read", "bash"]
+        assert data["skills"] == ["chart-visualization"]
 
     def test_create_persists_files_on_disk(self, agent_client, tmp_path):
         agent_client.post("/api/agents", json={"name": "disk-check", "soul": "disk soul"})

@@ -20,15 +20,20 @@ export function WorkspaceSidebar({
   const { open: isSidebarOpen } = useSidebar();
   return (
     <>
-      <Sidebar variant="sidebar" collapsible="icon" {...props}>
-        <SidebarHeader className="py-0">
+      <Sidebar
+        variant="sidebar"
+        collapsible="icon"
+        className="border-r border-[var(--kz-border-soft)] bg-[var(--kz-sidebar)]"
+        {...props}
+      >
+        <SidebarHeader className="border-b border-[var(--kz-border-soft)] px-2 py-1">
           <WorkspaceHeader />
         </SidebarHeader>
-        <SidebarContent>
+        <SidebarContent className="gap-1 px-1 py-2">
           <WorkspaceNavChatList />
           {isSidebarOpen && <RecentChatList />}
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="border-t border-[var(--kz-border-soft)] p-2">
           <WorkspaceNavMenu />
         </SidebarFooter>
         <SidebarRail />

@@ -53,6 +53,7 @@ def create_chat_model(name: str | None = None, thinking_enabled: bool = False, *
             "name",
             "display_name",
             "description",
+            "provider",
             "supports_thinking",
             "supports_reasoning_effort",
             "when_thinking_enabled",

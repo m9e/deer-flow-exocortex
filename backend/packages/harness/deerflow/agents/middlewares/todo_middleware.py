@@ -89,6 +89,7 @@ class TodoMiddleware(TodoListMiddleware):
         formatted = _format_todos(todos)
         reminder = HumanMessage(
             name="todo_reminder",
+            additional_kwargs={"hide_from_ui": True},
             content=(
                 "<system_reminder>\n"
                 "Your todo list from earlier is no longer visible in the current context window, "
@@ -157,6 +158,7 @@ class TodoMiddleware(TodoListMiddleware):
         incomplete_text = "\n".join(f"- [{t.get('status', 'pending')}] {t.get('content', '')}" for t in incomplete)
         reminder = HumanMessage(
             name="todo_completion_reminder",
+            additional_kwargs={"hide_from_ui": True},
             content=(
                 "<system_reminder>\n"
                 "You have incomplete todo items that must be finished before giving your final response:\n\n"

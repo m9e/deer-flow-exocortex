@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 import type { Locale } from "@/core/i18n";
+import { setLocaleInCookie } from "@/core/i18n/cookies";
 
 export interface I18nContextType {
   locale: Locale;
@@ -22,7 +23,7 @@ export function I18nProvider({
 
   const handleSetLocale = (newLocale: Locale) => {
     setLocale(newLocale);
-    document.cookie = `locale=${newLocale}; path=/; max-age=31536000`;
+    setLocaleInCookie(newLocale);
   };
 
   return (

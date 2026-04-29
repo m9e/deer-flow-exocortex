@@ -4,6 +4,7 @@ export interface Model {
   model: string;
   display_name: string;
   description?: string | null;
+  provider?: string | null;
   supports_thinking?: boolean;
   supports_reasoning_effort?: boolean;
 }

@@ -10,7 +10,46 @@ Consumers: ``deerflow.runtime.runs.worker`` (SSE publishing) and
 
 from __future__ import annotations
 
+import re
 from typing import Any
+
+_SYSTEM_REMINDER_BLOCK_RE = re.compile(r"<system_reminder\b[^>]*>[\s\S]*?</system_reminder>", re.IGNORECASE)
+_SYSTEM_REMINDER_OPEN_RE = re.compile(r"<system_reminder\b[^>]*>[\s\S]*$", re.IGNORECASE)
+
+
+def strip_internal_system_reminders(text: str) -> str:
+    """Remove internal system-reminder blocks from text sent to clients."""
+    cleaned = _SYSTEM_REMINDER_BLOCK_RE.sub("", text)
+    # Streaming or failed generations can leave a partial block. Drop the
+    # unterminated tail rather than rendering internal instructions.
+    cleaned = _SYSTEM_REMINDER_OPEN_RE.sub("", cleaned)
+    return cleaned.strip()
+
+
+def _sanitize_content(value: Any) -> Any:
+    if isinstance(value, str):
+        return strip_internal_system_reminders(value)
+    if isinstance(value, list):
+        sanitized: list[Any] = []
+        for item in value:
+            if isinstance(item, str):
+                sanitized.append(strip_internal_system_reminders(item))
+            elif isinstance(item, dict):
+                sanitized.append(_sanitize_message_dict(item))
+            else:
+                sanitized.append(serialize_lc_object(item))
+        return sanitized
+    return value
+
+
+def _sanitize_message_dict(value: dict[str, Any]) -> dict[str, Any]:
+    """Sanitize serialized message-like dictionaries."""
+    result = dict(value)
+    if "content" in result:
+        result["content"] = _sanitize_content(result["content"])
+    if "text" in result and isinstance(result["text"], str):
+        result["text"] = strip_internal_system_reminders(result["text"])
+    return result
 
 
 def serialize_lc_object(obj: Any) -> Any:
@@ -20,19 +59,25 @@ def serialize_lc_object(obj: Any) -> Any:
     if isinstance(obj, (str, int, float, bool)):
         return obj
     if isinstance(obj, dict):
-        return {k: serialize_lc_object(v) for k, v in obj.items()}
+        return _sanitize_message_dict({k: serialize_lc_object(v) for k, v in obj.items()})
     if isinstance(obj, (list, tuple)):
         return [serialize_lc_object(item) for item in obj]
     # Pydantic v2
     if hasattr(obj, "model_dump"):
         try:
-            return obj.model_dump()
+            value = obj.model_dump()
+            if isinstance(value, dict):
+                return _sanitize_message_dict(serialize_lc_object(value))
+            return serialize_lc_object(value)
         except Exception:
             pass
     # Pydantic v1 / older objects
     if hasattr(obj, "dict"):
         try:
-            return obj.dict()
+            value = obj.dict()
+            if isinstance(value, dict):
+                return _sanitize_message_dict(serialize_lc_object(value))
+            return serialize_lc_object(value)
         except Exception:
             pass
     # Last resort

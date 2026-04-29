@@ -11,6 +11,7 @@ from langchain_core.tools import BaseTool
 
 from deerflow.config.extensions_config import ExtensionsConfig
 from deerflow.mcp.client import build_servers_config
+from deerflow.mcp.kamiwaza_discovery import discover_kamiwaza_mcp_servers
 from deerflow.mcp.oauth import build_oauth_tool_interceptor, get_initial_oauth_headers
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,13 @@ async def get_mcp_tools() -> list[BaseTool]:
     # made through the Gateway API (which runs in a separate process) are immediately
     # reflected when initializing MCP tools.
     extensions_config = ExtensionsConfig.from_file()
+    extensions_config = ExtensionsConfig(
+        mcp_servers={
+            **extensions_config.mcp_servers,
+            **await discover_kamiwaza_mcp_servers(),
+        },
+        skills=extensions_config.skills,
+    )
     servers_config = build_servers_config(extensions_config)
 
     if not servers_config:

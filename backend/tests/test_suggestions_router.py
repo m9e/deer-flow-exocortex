@@ -100,3 +100,23 @@ def test_generate_suggestions_returns_empty_on_model_error(monkeypatch):
     result = asyncio.run(suggestions.generate_suggestions("t1", req))
 
     assert result.suggestions == []
+
+
+def test_generate_suggestions_returns_empty_on_timeout(monkeypatch):
+    req = suggestions.SuggestionsRequest(
+        messages=[suggestions.SuggestionMessage(role="user", content="Hi")],
+        n=2,
+        model_name=None,
+    )
+
+    class SlowModel:
+        async def ainvoke(self, _messages):
+            await asyncio.sleep(1)
+            return MagicMock(content='["Q1"]')
+
+    monkeypatch.setenv("DEER_FLOW_SUGGESTIONS_TIMEOUT_SECONDS", "0.01")
+    monkeypatch.setattr(suggestions, "create_chat_model", lambda **kwargs: SlowModel())
+
+    result = asyncio.run(suggestions.generate_suggestions("t1", req))
+
+    assert result.suggestions == []

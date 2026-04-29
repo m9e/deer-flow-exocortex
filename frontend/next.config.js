@@ -13,9 +13,16 @@ function getInternalServiceURL(envKey, fallbackURL) {
 import nextra from "nextra";
 
 const withNextra = nextra({});
+const basePath = (process.env.NEXT_PUBLIC_APP_BASE_PATH || "").replace(
+  /\/+$/,
+  "",
+);
 
 /** @type {import("next").NextConfig} */
 const config = {
+  basePath: basePath || undefined,
+  assetPrefix: basePath || undefined,
+  skipTrailingSlashRedirect: true,
   i18n: {
     locales: ["en", "zh"],
     defaultLocale: "en",
@@ -59,6 +66,38 @@ const config = {
       rewrites.push({
         source: "/api/skills/:path*",
         destination: `${gatewayURL}/api/skills/:path*`,
+      });
+      rewrites.push({
+        source: "/api/models",
+        destination: `${gatewayURL}/api/models`,
+      });
+      rewrites.push({
+        source: "/api/models/:path*",
+        destination: `${gatewayURL}/api/models/:path*`,
+      });
+      rewrites.push({
+        source: "/api/mcp",
+        destination: `${gatewayURL}/api/mcp`,
+      });
+      rewrites.push({
+        source: "/api/mcp/:path*",
+        destination: `${gatewayURL}/api/mcp/:path*`,
+      });
+      rewrites.push({
+        source: "/api/threads",
+        destination: `${gatewayURL}/api/threads`,
+      });
+      rewrites.push({
+        source: "/api/threads/:path*",
+        destination: `${gatewayURL}/api/threads/:path*`,
+      });
+      rewrites.push({
+        source: "/api/memory",
+        destination: `${gatewayURL}/api/memory`,
+      });
+      rewrites.push({
+        source: "/api/memory/:path*",
+        destination: `${gatewayURL}/api/memory/:path*`,
       });
     }
 

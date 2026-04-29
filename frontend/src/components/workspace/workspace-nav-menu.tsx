@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BugIcon,
   ChevronsUpDown,
   GlobeIcon,
   InfoIcon,
@@ -27,7 +26,6 @@ import {
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/core/i18n/hooks";
 
-import { GithubIcon } from "./github-icon";
 import { SettingsDialog } from "./settings";
 
 function NavMenuButtonContent({
@@ -38,14 +36,23 @@ function NavMenuButtonContent({
   t: ReturnType<typeof useI18n>["t"];
 }) {
   return isSidebarOpen ? (
-    <div className="text-muted-foreground flex w-full items-center gap-2 text-left text-sm">
-      <SettingsIcon className="size-4" />
-      <span>{t.workspace.settingsAndMore}</span>
-      <ChevronsUpDown className="text-muted-foreground ml-auto size-4" />
+    <div className="flex w-full items-center gap-2 text-left text-sm text-[var(--kz-text-3)]">
+      <div className="flex size-7 items-center justify-center rounded-full bg-[var(--kz-primary-soft)] text-[var(--kz-primary-2)]">
+        <SettingsIcon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-xs font-medium text-[var(--kz-text-2)]">
+          {t.workspace.settingsAndMore}
+        </div>
+        <div className="truncate text-[10px] text-[var(--kz-text-4)]">
+          kamiwaza.team
+        </div>
+      </div>
+      <ChevronsUpDown className="ml-auto size-4 text-[var(--kz-text-4)]" />
     </div>
   ) : (
     <div className="flex size-full items-center justify-center">
-      <SettingsIcon className="text-muted-foreground size-4" />
+      <SettingsIcon className="size-4 text-[var(--kz-text-3)]" />
     </div>
   );
 }
@@ -77,13 +84,13 @@ export function WorkspaceNavMenu() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                  className="data-[state=open]:text-sidebar-accent-foreground h-12 rounded-[var(--kz-r)] border border-transparent data-[state=open]:border-[var(--kz-border-emerald)] data-[state=open]:bg-[var(--kz-primary-soft)]"
                 >
                   <NavMenuButtonContent isSidebarOpen={isSidebarOpen} t={t} />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-[var(--kz-r)] border-[var(--kz-border)] bg-[var(--kz-surface)]"
                 align="end"
                 sideOffset={4}
               >
@@ -99,7 +106,7 @@ export function WorkspaceNavMenu() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <a
-                    href="https://deerflow.tech/"
+                    href="https://kamiwaza.ai/"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -108,28 +115,7 @@ export function WorkspaceNavMenu() {
                       {t.workspace.officialWebsite}
                     </DropdownMenuItem>
                   </a>
-                  <a
-                    href="https://github.com/bytedance/deer-flow"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <DropdownMenuItem>
-                      <GithubIcon />
-                      {t.workspace.visitGithub}
-                    </DropdownMenuItem>
-                  </a>
-                  <DropdownMenuSeparator />
-                  <a
-                    href="https://github.com/bytedance/deer-flow/issues"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <DropdownMenuItem>
-                      <BugIcon />
-                      {t.workspace.reportIssue}
-                    </DropdownMenuItem>
-                  </a>
-                  <a href="mailto:support@deerflow.tech">
+                  <a href="mailto:support@kamiwaza.ai">
                     <DropdownMenuItem>
                       <MailIcon />
                       {t.workspace.contactUs}

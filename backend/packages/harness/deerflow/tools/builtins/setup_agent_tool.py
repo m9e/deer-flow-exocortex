@@ -6,7 +6,7 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import ToolRuntime
 from langgraph.types import Command
 
-from deerflow.config.agents_config import validate_agent_name
+from deerflow.config.agents_config import remote_agents_store_configured, sync_agent_to_remote_store, validate_agent_name
 from deerflow.config.paths import get_paths
 
 logger = logging.getLogger(__name__)
@@ -47,11 +47,21 @@ def setup_agent(
         soul_file = agent_dir / "SOUL.md"
         soul_file.write_text(soul, encoding="utf-8")
 
+        remote_sync_failed = False
+        if agent_name and remote_agents_store_configured():
+            remote_sync_failed = not sync_agent_to_remote_store(agent_name, soul=soul, description=description)
+
         logger.info(f"[agent_creator] Created agent '{agent_name}' at {agent_dir}")
+        content = f"Agent '{agent_name}' created successfully!"
+        if remote_sync_failed:
+            content = (
+                f"Agent '{agent_name}' was written locally, but failed to sync to the gateway agent store. "
+                "It may not appear in the UI until saved again."
+            )
         return Command(
             update={
                 "created_agent_name": agent_name,
-                "messages": [ToolMessage(content=f"Agent '{agent_name}' created successfully!", tool_call_id=runtime.tool_call_id)],
+                "messages": [ToolMessage(content=content, tool_call_id=runtime.tool_call_id)],
             }
         )
 

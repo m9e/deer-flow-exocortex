@@ -41,6 +41,9 @@ WORKDIR /app
 
 # Copy backend source code
 COPY backend ./backend
+COPY config ./config
+COPY skills ./skills
+COPY config.example.yaml extensions_config.example.json ./
 
 # Install dependencies with cache mount
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -79,6 +82,22 @@ WORKDIR /app
 
 # Copy backend with pre-built virtualenv from builder
 COPY --from=builder /app/backend ./backend
+COPY --from=builder /app/config ./config
+COPY --from=builder /app/skills ./skills
+COPY --from=builder /app/config.example.yaml ./config.example.yaml
+COPY --from=builder /app/extensions_config.example.json ./extensions_config.example.json
+
+RUN groupadd -g 1001 appuser \
+    && useradd -m -u 1001 -g appuser -s /bin/sh appuser \
+    && rm -rf /app/backend/.deer-flow /app/backend/.langgraph_api \
+    && mkdir -p /app/backend/.deer-flow /app/backend/.langgraph_api /home/appuser/.cache/uv \
+    && chown -R 1001:1001 /app /home/appuser
+
+ENV HOME=/home/appuser \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_CACHE_DIR=/home/appuser/.cache/uv
+
+USER 1001:1001
 
 # Expose ports (gateway: 8001, langgraph: 2024)
 EXPOSE 8001 2024

@@ -43,6 +43,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { getAPIClient } from "@/core/api";
+import { withAppBasePath } from "@/core/config";
 import { useI18n } from "@/core/i18n/hooks";
 import {
   exportThreadAsJSON,
@@ -117,14 +118,8 @@ export function RecentChatList() {
 
   const handleShare = useCallback(
     async (thread: AgentThread) => {
-      // Always use Vercel URL for sharing so others can access
-      const VERCEL_URL = "https://deer-flow-v2.vercel.app";
-      const isLocalhost =
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1";
-      // On localhost: use Vercel URL; On production: use current origin
-      const baseUrl = isLocalhost ? VERCEL_URL : window.location.origin;
-      const shareUrl = `${baseUrl}${pathOfThread(thread)}`;
+      const baseUrl = window.location.origin;
+      const shareUrl = `${baseUrl}${withAppBasePath(pathOfThread(thread))}`;
       try {
         await navigator.clipboard.writeText(shareUrl);
         toast.success(t.clipboard.linkCopied);
@@ -165,7 +160,7 @@ export function RecentChatList() {
   }
   return (
     <>
-      <SidebarGroup>
+      <SidebarGroup className="px-2">
         <SidebarGroupLabel>
           {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true"
             ? t.sidebar.recentChats
@@ -184,17 +179,19 @@ export function RecentChatList() {
                     <SidebarMenuButton isActive={isActive} asChild>
                       <div>
                         <Link
-                          className="text-muted-foreground block w-full whitespace-nowrap group-hover/side-menu-item:overflow-hidden"
+                          className="block w-full whitespace-nowrap group-hover/side-menu-item:overflow-hidden"
                           href={pathOfThread(thread)}
                         >
-                          {titleOfThread(thread)}
+                          <span className="block truncate">
+                            {titleOfThread(thread)}
+                          </span>
                         </Link>
                         {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <SidebarMenuAction
                                 showOnHover
-                                className="bg-background/50 hover:bg-background"
+                                className="bg-[rgba(15,23,42,0.8)] text-[var(--kz-text-4)] hover:bg-[var(--kz-primary-soft)] hover:text-[var(--kz-primary-2)]"
                               >
                                 <MoreHorizontal />
                                 <span className="sr-only">{t.common.more}</span>

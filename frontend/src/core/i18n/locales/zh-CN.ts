@@ -1,10 +1,11 @@
 ﻿import {
+  BarChart3Icon,
+  BotIcon,
+  BriefcaseBusinessIcon,
   CompassIcon,
+  FileTextIcon,
   GraduationCapIcon,
   ImageIcon,
-  MicroscopeIcon,
-  PenLineIcon,
-  ShapesIcon,
   SparklesIcon,
   VideoIcon,
 } from "lucide-react";
@@ -104,6 +105,7 @@ export const zhCN: Translations = {
     searchModels: "搜索模型...",
     surpriseMe: "小惊喜",
     surpriseMePrompt: "给我一个小惊喜吧",
+    surpriseMeDescription: "让工作区选择一个有用的工作流。",
     followupLoading: "正在生成可能的后续问题...",
     followupConfirmTitle: "发送建议问题？",
     followupConfirmDescription: "当前输入框已有内容，选择发送方式。",
@@ -111,23 +113,38 @@ export const zhCN: Translations = {
     followupConfirmReplace: "替换并发送",
     suggestions: [
       {
-        suggestion: "写作",
-        prompt: "撰写一篇关于[主题]的博客文章",
-        icon: PenLineIcon,
+        suggestion: "评审学术论文",
+        description: "评估方法、贡献、局限与改进建议。",
+        prompt:
+          "请像学术审稿人一样评审[论文链接或上传的 PDF]。总结贡献，评估方法，指出优缺点，并给出具体反馈。",
+        icon: FileTextIcon,
       },
       {
-        suggestion: "研究",
-        prompt: "深入浅出的研究一下[主题]，并总结发现。",
-        icon: MicroscopeIcon,
+        suggestion: "定制 AI 智能体",
+        description: "设计可持续使用的智能体身份和 SOUL。",
+        prompt:
+          "帮我为[工作流]设计并保存一个持久 AI 智能体。只询问必要信息，然后引导创建它的 SOUL。",
+        icon: BotIcon,
       },
       {
-        suggestion: "收集",
-        prompt: "从[来源]收集数据并创建报告。",
-        icon: ShapesIcon,
+        suggestion: "可视化数据",
+        description: "把表格或数据集转成清晰图表。",
+        prompt:
+          "分析并可视化[数据集或粘贴的表格]。选择最清晰的图表类型，说明关键洞察，并保存生成的图表。",
+        icon: BarChart3Icon,
       },
       {
-        suggestion: "学习",
-        prompt: "学习关于[主题]并创建教程。",
+        suggestion: "咨询分析",
+        description: "构建市场、战略或竞争分析报告。",
+        prompt:
+          "为[主题]创建咨询风格分析。先搭建分析框架，识别所需数据，研究市场，并输出简洁的战略建议。",
+        icon: BriefcaseBusinessIcon,
+      },
+      {
+        suggestion: "深度研究",
+        description: "搜索、交叉验证、综合并引用。",
+        prompt:
+          "深入研究[主题]。使用多个来源，交叉验证重要结论，并用引用总结关键发现。",
         icon: GraduationCapIcon,
       },
     ],

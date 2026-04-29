@@ -54,6 +54,25 @@ def test_before_summarization_hook_receives_messages_before_compression() -> Non
     assert captured[0].agent_name is None
     assert isinstance(result["messages"][0], RemoveMessage)
     assert result["messages"][1].content.startswith("Here is a summary")
+    assert result["messages"][1].name == "conversation_summary"
+    assert result["messages"][1].additional_kwargs["hide_from_ui"] is True
+
+
+def test_summarization_failure_retains_original_history(caplog: pytest.LogCaptureFixture) -> None:
+    model = MagicMock()
+    model.invoke.side_effect = RuntimeError("provider stream closed")
+    middleware = DeerFlowSummarizationMiddleware(
+        model=model,
+        trigger=("messages", 4),
+        keep=("messages", 2),
+        token_counter=len,
+    )
+
+    with caplog.at_level("WARNING"):
+        result = middleware.before_model({"messages": _messages()}, _runtime())
+
+    assert result is None
+    assert "conversation summarization failed; retaining original history" in caplog.text
 
 
 def test_before_summarization_hook_not_called_when_threshold_not_met() -> None:

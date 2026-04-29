@@ -88,17 +88,19 @@ export function SettingsDialog(props: SettingsDialogProps) {
       onOpenChange={(open) => props.onOpenChange?.(open)}
     >
       <DialogContent
-        className="flex h-[75vh] max-h-[calc(100vh-2rem)] flex-col sm:max-w-5xl md:max-w-6xl"
+        className="flex h-[75vh] max-h-[calc(100vh-2rem)] flex-col rounded-[var(--kz-r-lg)] border-[var(--kz-border)] bg-[var(--kz-surface)] sm:max-w-5xl md:max-w-6xl"
         aria-describedby={undefined}
       >
         <DialogHeader className="gap-1">
-          <DialogTitle>{t.settings.title}</DialogTitle>
-          <p className="text-muted-foreground text-sm">
+          <DialogTitle className="text-[var(--kz-text)]">
+            {t.settings.title}
+          </DialogTitle>
+          <p className="text-sm text-[var(--kz-text-3)]">
             {t.settings.description}
           </p>
         </DialogHeader>
         <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[220px_1fr]">
-          <nav className="bg-sidebar min-h-0 overflow-y-auto rounded-lg border p-2">
+          <nav className="min-h-0 overflow-y-auto rounded-[var(--kz-r)] border border-[var(--kz-border-soft)] bg-[var(--kz-sidebar)] p-2">
             <ul className="space-y-1 pr-1">
               {sections.map(({ id, label, icon: Icon }) => {
                 const active = activeSection === id;
@@ -110,8 +112,8 @@ export function SettingsDialog(props: SettingsDialogProps) {
                       className={cn(
                         "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                         active
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          ? "bg-[var(--kz-primary-soft)] text-[var(--kz-primary-2)] shadow-sm"
+                          : "text-[var(--kz-text-3)] hover:bg-[rgba(255,255,255,0.04)] hover:text-[var(--kz-text)]",
                       )}
                     >
                       <Icon className="size-4" />
@@ -122,7 +124,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               })}
             </ul>
           </nav>
-          <ScrollArea className="h-full min-h-0 rounded-lg border">
+          <ScrollArea className="h-full min-h-0 rounded-[var(--kz-r)] border border-[var(--kz-border-soft)] bg-[var(--kz-well)]">
             <div className="space-y-8 p-6">
               {activeSection === "appearance" && <AppearanceSettingsPage />}
               {activeSection === "memory" && <MemorySettingsPage />}

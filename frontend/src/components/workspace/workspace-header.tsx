@@ -5,6 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
+  KamiwazaMark,
+  KamiwazaWordmark,
+} from "@/components/branding/kamiwaza-mark";
+import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -28,23 +32,29 @@ export function WorkspaceHeader({ className }: { className?: string }) {
         )}
       >
         {state === "collapsed" ? (
-          <div className="group-has-data-[collapsible=icon]/sidebar-wrapper:-translate-y flex w-full cursor-pointer items-center justify-center">
-            <div className="text-primary block pt-1 font-serif group-hover/workspace-header:hidden">
-              DF
-            </div>
-            <SidebarTrigger className="hidden pl-2 group-hover/workspace-header:block" />
+          <div className="group-has-data-[collapsible=icon]/sidebar-wrapper:-translate-y flex w-full items-center justify-center">
+            <Link
+              href="/workspace"
+              aria-label="Kamiwaza Flow home"
+              className="group-hover/workspace-header:hidden"
+            >
+              <KamiwazaMark />
+            </Link>
+            <SidebarTrigger className="hidden group-hover/workspace-header:flex" />
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-2">
-            {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ? (
-              <Link href="/" className="text-primary ml-2 font-serif">
-                DeerFlow
-              </Link>
-            ) : (
-              <div className="text-primary ml-2 cursor-default font-serif">
-                DeerFlow
-              </div>
-            )}
+          <div className="flex items-center justify-between gap-2 px-2">
+            <Link
+              href={
+                env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true"
+                  ? "/"
+                  : "/workspace"
+              }
+              aria-label="Kamiwaza Flow home"
+              className="min-w-0 rounded-md focus-visible:ring-2 focus-visible:ring-[var(--kz-primary)] focus-visible:outline-none"
+            >
+              <KamiwazaWordmark />
+            </Link>
             <SidebarTrigger />
           </div>
         )}
@@ -54,8 +64,9 @@ export function WorkspaceHeader({ className }: { className?: string }) {
           <SidebarMenuButton
             isActive={pathname === "/workspace/chats/new"}
             asChild
+            className="border border-[var(--kz-border-emerald)] bg-[var(--kz-primary-soft)] text-[var(--kz-primary-2)] shadow-[0_0_0_1px_rgba(16,185,129,0.08)] hover:bg-[rgba(16,185,129,0.16)] hover:text-[var(--kz-text)]"
           >
-            <Link className="text-muted-foreground" href="/workspace/chats/new">
+            <Link href="/workspace/chats/new">
               <MessageSquarePlus size={16} />
               <span>{t.sidebar.newChat}</span>
             </Link>
