@@ -1,9 +1,22 @@
 "use client";
 
-import { MonitorSmartphoneIcon, MoonIcon, SunIcon } from "lucide-react";
+import {
+  MonitorSmartphoneIcon,
+  MoonIcon,
+  SaveIcon,
+  SunIcon,
+} from "lucide-react";
 import { useTheme } from "next-themes";
-import { useMemo, type ComponentType, type SVGProps } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+  type SVGProps,
+} from "react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -14,6 +27,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { enUS, isLocale, zhCN, type Locale } from "@/core/i18n";
 import { useI18n } from "@/core/i18n/hooks";
+import {
+  getLocalSettings,
+  normalizePreferredName,
+  PREFERRED_NAME_MAX_LENGTH,
+  saveLocalSettings,
+} from "@/core/settings/local";
 import { cn } from "@/lib/utils";
 
 import { SettingsSection } from "./settings-section";
@@ -27,6 +46,30 @@ export function AppearanceSettingsPage() {
   const { t, locale, changeLocale } = useI18n();
   const { theme, setTheme, systemTheme } = useTheme();
   const currentTheme = (theme ?? "system") as "system" | "light" | "dark";
+  const [preferredName, setPreferredName] = useState("");
+  const [savedPreferredName, setSavedPreferredName] = useState("");
+
+  useEffect(() => {
+    const storedName = normalizePreferredName(
+      getLocalSettings().personalization.preferredName,
+    );
+    setPreferredName(storedName);
+    setSavedPreferredName(storedName);
+  }, []);
+
+  function handleSavePreferredName() {
+    const nextName = normalizePreferredName(preferredName);
+    const settings = getLocalSettings();
+    saveLocalSettings({
+      ...settings,
+      personalization: {
+        ...settings.personalization,
+        preferredName: nextName,
+      },
+    });
+    setPreferredName(nextName);
+    setSavedPreferredName(nextName);
+  }
 
   const themeOptions = useMemo(
     () => [
@@ -79,6 +122,42 @@ export function AppearanceSettingsPage() {
             />
           ))}
         </div>
+      </SettingsSection>
+
+      <Separator />
+
+      <SettingsSection
+        title={t.settings.appearance.preferredNameTitle}
+        description={t.settings.appearance.preferredNameDescription}
+      >
+        <form
+          className="flex max-w-xl flex-col gap-3 sm:flex-row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSavePreferredName();
+          }}
+        >
+          <Input
+            value={preferredName}
+            maxLength={PREFERRED_NAME_MAX_LENGTH}
+            placeholder={t.settings.appearance.preferredNamePlaceholder}
+            aria-label={t.settings.appearance.preferredNameTitle}
+            onChange={(event) => {
+              setPreferredName(event.target.value);
+            }}
+            className="h-10 flex-1"
+          />
+          <Button
+            type="submit"
+            className="h-10"
+            disabled={
+              normalizePreferredName(preferredName) === savedPreferredName
+            }
+          >
+            <SaveIcon className="size-4" />
+            {t.common.save}
+          </Button>
+        </form>
       </SettingsSection>
 
       <Separator />

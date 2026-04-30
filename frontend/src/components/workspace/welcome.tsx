@@ -5,6 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import { withAppBasePath } from "@/core/config";
 import { useI18n } from "@/core/i18n/hooks";
+import {
+  getLocalSettings,
+  LOCAL_SETTINGS_UPDATED_EVENT,
+  normalizePreferredName,
+} from "@/core/settings/local";
 import { cn } from "@/lib/utils";
 
 let waved = false;
@@ -20,6 +25,14 @@ function timeOfDayGreeting() {
   return "Good evening";
 }
 
+function normalizeKamiwazaDisplayName(value: string | null | undefined) {
+  const normalized = normalizePreferredName(value);
+  if (!normalized || normalized.toLowerCase() === "admin admin") {
+    return null;
+  }
+  return normalized.split(/\s+/)[0] ?? null;
+}
+
 export function Welcome({
   className,
   mode,
@@ -29,10 +42,34 @@ export function Welcome({
 }) {
   const { t } = useI18n();
   const searchParams = useSearchParams();
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [kamiwazaDisplayName, setKamiwazaDisplayName] = useState<string | null>(
+    null,
+  );
+  const [preferredName, setPreferredName] = useState("");
 
   useEffect(() => {
     waved = true;
+  }, []);
+
+  useEffect(() => {
+    function syncPreferredName() {
+      setPreferredName(
+        normalizePreferredName(
+          getLocalSettings().personalization.preferredName,
+        ),
+      );
+    }
+
+    syncPreferredName();
+    window.addEventListener("storage", syncPreferredName);
+    window.addEventListener(LOCAL_SETTINGS_UPDATED_EVENT, syncPreferredName);
+    return () => {
+      window.removeEventListener("storage", syncPreferredName);
+      window.removeEventListener(
+        LOCAL_SETTINGS_UPDATED_EVENT,
+        syncPreferredName,
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -51,9 +88,10 @@ export function Welcome({
         };
       })
       .then((session) => {
-        const name = session?.user?.displayName?.trim();
-        if (!cancelled && name) {
-          setDisplayName(name);
+        if (!cancelled) {
+          setKamiwazaDisplayName(
+            normalizeKamiwazaDisplayName(session?.user?.displayName),
+          );
         }
       })
       .catch(() => {
@@ -66,11 +104,12 @@ export function Welcome({
   }, []);
 
   const greeting = useMemo(() => {
+    const displayName = preferredName || kamiwazaDisplayName;
     if (!displayName) {
-      return t.welcome.greeting;
+      return `${timeOfDayGreeting()}.`;
     }
     return `${timeOfDayGreeting()}, ${displayName}.`;
-  }, [displayName, t.welcome.greeting]);
+  }, [kamiwazaDisplayName, preferredName]);
 
   return (
     <div

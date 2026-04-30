@@ -5,6 +5,9 @@ export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
   notification: {
     enabled: true,
   },
+  personalization: {
+    preferredName: "",
+  },
   context: {
     model_name: undefined,
     mode: undefined,
@@ -14,6 +17,8 @@ export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
 
 export const LOCAL_SETTINGS_KEY = "deerflow.local-settings";
 export const THREAD_MODEL_KEY_PREFIX = "deerflow.thread-model.";
+export const LOCAL_SETTINGS_UPDATED_EVENT = "deerflow.local-settings-updated";
+export const PREFERRED_NAME_MAX_LENGTH = 50;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -22,6 +27,9 @@ function isBrowser(): boolean {
 export interface LocalSettings {
   notification: {
     enabled: boolean;
+  };
+  personalization: {
+    preferredName: string;
   };
   context: Omit<
     AgentThreadContext,
@@ -49,7 +57,16 @@ function mergeLocalSettings(settings?: Partial<LocalSettings>): LocalSettings {
       ...DEFAULT_LOCAL_SETTINGS.notification,
       ...settings?.notification,
     },
+    personalization: {
+      ...DEFAULT_LOCAL_SETTINGS.personalization,
+      ...settings?.personalization,
+    },
   };
+}
+
+export function normalizePreferredName(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().replace(/\s+/g, " ");
+  return Array.from(normalized).slice(0, PREFERRED_NAME_MAX_LENGTH).join("");
 }
 
 export function getLocalSettingsStorageKey(): string {
@@ -121,4 +138,5 @@ export function saveLocalSettings(settings: LocalSettings) {
     return;
   }
   localStorage.setItem(getLocalSettingsStorageKey(), JSON.stringify(settings));
+  window.dispatchEvent(new Event(LOCAL_SETTINGS_UPDATED_EVENT));
 }

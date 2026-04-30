@@ -344,6 +344,9 @@ export interface Translations {
       systemDescription: string;
       lightDescription: string;
       darkDescription: string;
+      preferredNameTitle: string;
+      preferredNameDescription: string;
+      preferredNamePlaceholder: string;
       languageTitle: string;
       languageDescription: string;
     };

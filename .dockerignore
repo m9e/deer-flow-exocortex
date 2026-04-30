@@ -4,6 +4,10 @@ Dockerfile
 .git
 .gitignore
 docker/
+config/config.yaml
+config/extensions_config.json
+config.yaml
+extensions_config.json
 
 # Python
 __pycache__/
