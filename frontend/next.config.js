@@ -23,6 +23,10 @@ const config = {
   basePath: basePath || undefined,
   assetPrefix: basePath || undefined,
   skipTrailingSlashRedirect: true,
+  output:
+    process.env.NEXT_CONFIG_BUILD_OUTPUT === "standalone"
+      ? "standalone"
+      : undefined,
   i18n: {
     locales: ["en", "zh"],
     defaultLocale: "en",
@@ -30,10 +34,6 @@ const config = {
   devIndicators: false,
   async rewrites() {
     const rewrites = [];
-    const langgraphURL = getInternalServiceURL(
-      "DEER_FLOW_INTERNAL_LANGGRAPH_BASE_URL",
-      "http://127.0.0.1:2024",
-    );
     const gatewayURL = getInternalServiceURL(
       "DEER_FLOW_INTERNAL_GATEWAY_BASE_URL",
       "http://127.0.0.1:8001",
@@ -42,11 +42,11 @@ const config = {
     if (!process.env.NEXT_PUBLIC_LANGGRAPH_BASE_URL) {
       rewrites.push({
         source: "/api/langgraph",
-        destination: langgraphURL,
+        destination: `${gatewayURL}/api`,
       });
       rewrites.push({
         source: "/api/langgraph/:path*",
-        destination: `${langgraphURL}/:path*`,
+        destination: `${gatewayURL}/api/:path*`,
       });
     }
 
@@ -67,37 +67,17 @@ const config = {
         source: "/api/skills/:path*",
         destination: `${gatewayURL}/api/skills/:path*`,
       });
+
+      // Catch-all for remaining gateway API routes (models, threads, memory,
+      // mcp, artifacts, uploads, suggestions, runs, etc.) that don't have
+      // their own NEXT_PUBLIC_* env var toggle.
+      //
+      // NOTE: this must come AFTER the /api/langgraph rewrite above so that
+      // LangGraph-compatible routes keep their public prefix while Gateway
+      // receives its native /api/* paths.
       rewrites.push({
-        source: "/api/models",
-        destination: `${gatewayURL}/api/models`,
-      });
-      rewrites.push({
-        source: "/api/models/:path*",
-        destination: `${gatewayURL}/api/models/:path*`,
-      });
-      rewrites.push({
-        source: "/api/mcp",
-        destination: `${gatewayURL}/api/mcp`,
-      });
-      rewrites.push({
-        source: "/api/mcp/:path*",
-        destination: `${gatewayURL}/api/mcp/:path*`,
-      });
-      rewrites.push({
-        source: "/api/threads",
-        destination: `${gatewayURL}/api/threads`,
-      });
-      rewrites.push({
-        source: "/api/threads/:path*",
-        destination: `${gatewayURL}/api/threads/:path*`,
-      });
-      rewrites.push({
-        source: "/api/memory",
-        destination: `${gatewayURL}/api/memory`,
-      });
-      rewrites.push({
-        source: "/api/memory/:path*",
-        destination: `${gatewayURL}/api/memory/:path*`,
+        source: "/api/:path*",
+        destination: `${gatewayURL}/api/:path*`,
       });
     }
 

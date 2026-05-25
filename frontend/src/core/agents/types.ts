@@ -3,7 +3,7 @@ export interface Agent {
   description: string;
   model: string | null;
   tool_groups: string[] | null;
-  skills?: string[] | null;
+  skills: string[] | null;
   soul?: string | null;
 }
 

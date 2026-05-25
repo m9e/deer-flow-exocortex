@@ -14,6 +14,7 @@ from deerflow.agents.memory.updater import (
 )
 from deerflow.config.agents_config import validate_agent_name
 from deerflow.config.memory_config import get_memory_config
+from deerflow.runtime.user_context import get_effective_user_id
 
 router = APIRouter(prefix="/api", tags=["memory"])
 
@@ -156,7 +157,7 @@ async def get_memory(agent_name: str | None = Query(default=None)) -> MemoryResp
         }
         ```
     """
-    memory_data = get_memory_data(_validated_agent_name(agent_name))
+    memory_data = get_memory_data(_validated_agent_name(agent_name), user_id=get_effective_user_id())
     return MemoryResponse(**memory_data)
 
 
@@ -176,7 +177,7 @@ async def reload_memory(agent_name: str | None = Query(default=None)) -> MemoryR
     Returns:
         The reloaded memory data.
     """
-    memory_data = reload_memory_data(_validated_agent_name(agent_name))
+    memory_data = reload_memory_data(_validated_agent_name(agent_name), user_id=get_effective_user_id())
     return MemoryResponse(**memory_data)
 
 
@@ -190,7 +191,7 @@ async def reload_memory(agent_name: str | None = Query(default=None)) -> MemoryR
 async def clear_memory(agent_name: str | None = Query(default=None)) -> MemoryResponse:
     """Clear all persisted memory data."""
     try:
-        memory_data = clear_memory_data(_validated_agent_name(agent_name))
+        memory_data = clear_memory_data(_validated_agent_name(agent_name), user_id=get_effective_user_id())
     except OSError as exc:
         raise HTTPException(status_code=500, detail="Failed to clear memory data.") from exc
 
@@ -212,6 +213,7 @@ async def create_memory_fact_endpoint(request: FactCreateRequest, agent_name: st
             category=request.category,
             confidence=request.confidence,
             agent_name=_validated_agent_name(agent_name),
+            user_id=get_effective_user_id(),
         )
     except ValueError as exc:
         raise _map_memory_fact_value_error(exc) from exc
@@ -231,7 +233,7 @@ async def create_memory_fact_endpoint(request: FactCreateRequest, agent_name: st
 async def delete_memory_fact_endpoint(fact_id: str, agent_name: str | None = Query(default=None)) -> MemoryResponse:
     """Delete a single fact from memory by fact id."""
     try:
-        memory_data = delete_memory_fact(fact_id, _validated_agent_name(agent_name))
+        memory_data = delete_memory_fact(fact_id, _validated_agent_name(agent_name), user_id=get_effective_user_id())
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Memory fact '{fact_id}' not found.") from exc
     except OSError as exc:
@@ -256,6 +258,7 @@ async def update_memory_fact_endpoint(fact_id: str, request: FactPatchRequest, a
             category=request.category,
             confidence=request.confidence,
             agent_name=_validated_agent_name(agent_name),
+            user_id=get_effective_user_id(),
         )
     except ValueError as exc:
         raise _map_memory_fact_value_error(exc) from exc
@@ -276,7 +279,7 @@ async def update_memory_fact_endpoint(fact_id: str, request: FactPatchRequest, a
 )
 async def export_memory(agent_name: str | None = Query(default=None)) -> MemoryResponse:
     """Export the current memory data."""
-    memory_data = get_memory_data(_validated_agent_name(agent_name))
+    memory_data = get_memory_data(_validated_agent_name(agent_name), user_id=get_effective_user_id())
     return MemoryResponse(**memory_data)
 
 
@@ -290,7 +293,7 @@ async def export_memory(agent_name: str | None = Query(default=None)) -> MemoryR
 async def import_memory(request: MemoryResponse, agent_name: str | None = Query(default=None)) -> MemoryResponse:
     """Import and persist memory data."""
     try:
-        memory_data = import_memory_data(request.model_dump(), _validated_agent_name(agent_name))
+        memory_data = import_memory_data(request.model_dump(), _validated_agent_name(agent_name), user_id=get_effective_user_id())
     except OSError as exc:
         raise HTTPException(status_code=500, detail="Failed to import memory data.") from exc
 
@@ -348,7 +351,7 @@ async def get_memory_status(agent_name: str | None = Query(default=None)) -> Mem
         Combined memory configuration and current data.
     """
     config = get_memory_config()
-    memory_data = get_memory_data(_validated_agent_name(agent_name))
+    memory_data = get_memory_data(_validated_agent_name(agent_name), user_id=get_effective_user_id())
 
     return MemoryStatusResponse(
         config=MemoryConfigResponse(

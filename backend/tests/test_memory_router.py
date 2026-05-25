@@ -258,13 +258,14 @@ def test_update_memory_fact_route_preserves_omitted_fields() -> None:
             )
 
     assert response.status_code == 200
-    update_fact.assert_called_once_with(
-        fact_id="fact_edit",
-        content="User prefers spaces",
-        category=None,
-        confidence=None,
-        agent_name=None,
-    )
+    assert update_fact.call_count == 1
+    call_kwargs = update_fact.call_args.kwargs
+    assert call_kwargs.get("fact_id") == "fact_edit"
+    assert call_kwargs.get("content") == "User prefers spaces"
+    assert call_kwargs.get("category") is None
+    assert call_kwargs.get("confidence") is None
+    assert call_kwargs.get("agent_name") is None
+    assert "user_id" in call_kwargs
     assert response.json()["facts"] == updated_memory["facts"]
 
 
@@ -278,7 +279,7 @@ def test_memory_routes_pass_agent_name_scope() -> None:
             response = client.get("/api/memory?agent_name=superagent")
 
     assert response.status_code == 200
-    get_memory_data.assert_called_once_with("superagent")
+    get_memory_data.assert_called_once_with("superagent", user_id="test-user-autouse")
 
 
 def test_memory_routes_reject_invalid_agent_name_scope() -> None:

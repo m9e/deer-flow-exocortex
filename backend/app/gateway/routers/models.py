@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from deerflow.config import get_app_config
+from app.gateway.deps import get_config
+from deerflow.config.app_config import AppConfig
 
 router = APIRouter(prefix="/api", tags=["models"])
 
@@ -38,7 +39,7 @@ class ModelsListResponse(BaseModel):
     summary="List All Models",
     description="Retrieve a list of all available AI models configured in the system.",
 )
-async def list_models() -> ModelsListResponse:
+async def list_models(config: AppConfig = Depends(get_config)) -> ModelsListResponse:
     """List all available models from configuration.
 
     Returns model information suitable for frontend display,
@@ -74,7 +75,6 @@ async def list_models() -> ModelsListResponse:
         }
         ```
     """
-    config = get_app_config()
     models = [
         ModelResponse(
             id=model.name,
@@ -100,7 +100,7 @@ async def list_models() -> ModelsListResponse:
     summary="Get Model Details",
     description="Retrieve detailed information about a specific AI model by its name.",
 )
-async def get_model(model_name: str) -> ModelResponse:
+async def get_model(model_name: str, config: AppConfig = Depends(get_config)) -> ModelResponse:
     """Get a specific model by name.
 
     Args:
@@ -122,7 +122,6 @@ async def get_model(model_name: str) -> ModelResponse:
         }
         ```
     """
-    config = get_app_config()
     model = config.get_model_config(model_name)
     if model is None:
         raise HTTPException(status_code=404, detail=f"Model '{model_name}' not found")

@@ -82,16 +82,25 @@ export function AgentCard({ agent }: AgentCardProps) {
           )}
         </CardHeader>
 
-        {agent.tool_groups && agent.tool_groups.length > 0 && (
+        {(agent.tool_groups?.length ?? agent.skills?.length ?? 0) > 0 && (
           <CardContent className="pt-0 pb-3">
             <div className="flex flex-wrap gap-1">
-              {agent.tool_groups.map((group) => (
+              {agent.tool_groups?.map((group) => (
                 <Badge
-                  key={group}
+                  key={`tg:${group}`}
                   variant="outline"
                   className="rounded-full border-[var(--kz-border-soft)] bg-[var(--kz-well)] text-xs text-[var(--kz-text-3)]"
                 >
                   {group}
+                </Badge>
+              ))}
+              {agent.skills?.map((skill) => (
+                <Badge
+                  key={`sk:${skill}`}
+                  variant="secondary"
+                  className="rounded-full border-[var(--kz-border-soft)] bg-[rgba(255,255,255,0.04)] text-xs text-[var(--kz-text-3)]"
+                >
+                  {skill}
                 </Badge>
               ))}
             </div>

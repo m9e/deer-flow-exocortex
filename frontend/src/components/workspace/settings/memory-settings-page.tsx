@@ -555,8 +555,8 @@ export function MemorySettingsPage() {
               </div>
             ) : null}
 
-            <div className="space-y-3">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
@@ -580,7 +580,7 @@ export function MemorySettingsPage() {
                 </ToggleGroup>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex min-w-0 flex-wrap gap-2 xl:justify-end">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -625,12 +625,12 @@ export function MemorySettingsPage() {
             ) : null}
 
             {shouldRenderSummariesBlock ? (
-              <div className="rounded-lg border p-4">
+              <div className="min-w-0 rounded-lg border p-4">
                 <div className="text-muted-foreground mb-4 text-sm">
                   {summaryReadOnly}
                 </div>
                 <Streamdown
-                  className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                  className="size-full min-w-0 [overflow-wrap:anywhere] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
                   {...streamdownPlugins}
                 >
                   {summariesToMarkdown(memory, filteredSectionGroups, t)}
@@ -639,7 +639,7 @@ export function MemorySettingsPage() {
             ) : null}
 
             {shouldRenderFactsBlock ? (
-              <div className="rounded-lg border p-4">
+              <div className="min-w-0 rounded-lg border p-4">
                 <div className="mb-4">
                   <h3 className="text-base font-medium">
                     {t.settings.memory.markdown.facts}
@@ -662,7 +662,7 @@ export function MemorySettingsPage() {
                           key={fact.id}
                           className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-start sm:justify-between"
                         >
-                          <div className="min-w-0 space-y-2">
+                          <div className="min-w-0 space-y-2 [overflow-wrap:anywhere]">
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                               <span>
                                 <span className="text-muted-foreground">
@@ -698,7 +698,7 @@ export function MemorySettingsPage() {
                                 )}
                               </span>
                             </div>
-                            <p className="text-sm break-words">
+                            <p className="text-sm [overflow-wrap:anywhere]">
                               {fact.content}
                             </p>
                           </div>
