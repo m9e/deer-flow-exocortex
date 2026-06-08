@@ -268,6 +268,7 @@ export function extractTextFromMessage(message: Message) {
   return "";
 }
 
+const THINK_OPEN_TAG = "<think>";
 const THINK_TAG_RE = /<think>\s*([\s\S]*?)\s*<\/think>/g;
 const SYSTEM_REMINDER_BLOCK_RE =
   /<system_reminder\b[^>]*>[\s\S]*?<\/system_reminder>/gi;
@@ -289,18 +290,37 @@ function displayContent(message: Message, content: string) {
 
 function splitInlineReasoning(content: string) {
   const reasoningParts: string[] = [];
-  const cleaned = content
-    .replace(THINK_TAG_RE, (_, reasoning: string) => {
-      const normalized = reasoning.trim();
-      if (normalized) {
-        reasoningParts.push(normalized);
-      }
-      return "";
-    })
-    .trim();
+
+  // First pass: strip every fully closed `<think>...</think>` pair and
+  // collect its body as reasoning.
+  let cleaned = content.replace(THINK_TAG_RE, (_, reasoning: string) => {
+    const normalized = reasoning.trim();
+    if (normalized) {
+      reasoningParts.push(normalized);
+    }
+    return "";
+  });
+
+  // Streaming-safe pass: a `<think>` opener whose `</think>` has not arrived
+  // yet means the rest of the chunk is reasoning in flight. Route it into the
+  // reasoning slot instead of letting it render as message content (the
+  // raw-HTML markdown pipeline would otherwise paint the inner text on
+  // screen until the closing tag lands).
+  //
+  // Skip when the opener sits right after a backtick — that is the model
+  // talking about `<think>` literally inside markdown inline code, not
+  // actually streaming reasoning.
+  const openTagIndex = cleaned.indexOf(THINK_OPEN_TAG);
+  if (openTagIndex !== -1 && cleaned[openTagIndex - 1] !== "`") {
+    const tail = cleaned.slice(openTagIndex + THINK_OPEN_TAG.length).trim();
+    if (tail) {
+      reasoningParts.push(tail);
+    }
+    cleaned = cleaned.slice(0, openTagIndex);
+  }
 
   return {
-    content: cleaned,
+    content: cleaned.trim(),
     reasoning: reasoningParts.length > 0 ? reasoningParts.join("\n\n") : null,
   };
 }
