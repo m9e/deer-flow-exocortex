@@ -13,6 +13,7 @@ import {
   hasReasoning,
   isAssistantMessageGroupStreaming,
   isHiddenFromUIMessage,
+  stripUploadedFilesTag,
 } from "@/core/messages/utils";
 
 function message(overrides: Partial<Message>): Message {
@@ -239,6 +240,38 @@ describe("inline <think> tag splitting", () => {
     const message = aiMessage("Documentation: `<think>");
     expect(extractContentFromMessage(message)).toBe("Documentation: `<think>");
     expect(extractReasoningContentFromMessage(message)).toBeNull();
+  });
+});
+
+describe("human message internal context stripping", () => {
+  test("strips slash skill activation context from display content", () => {
+    const content =
+      "<slash_skill_activation>\n<skill_content># Secret SKILL.md</skill_content>\n</slash_skill_activation>\nreal user task";
+
+    expect(stripUploadedFilesTag(content)).toBe("real user task");
+  });
+
+  test("hides leaked slash skill activation messages with no user text", () => {
+    const messages = [
+      {
+        id: "slash-activation",
+        type: "human",
+        content:
+          "<slash_skill_activation>\n<skill_content># Secret SKILL.md</skill_content>\n</slash_skill_activation>",
+      },
+      {
+        id: "ai-1",
+        type: "ai",
+        content: "Public answer",
+      },
+    ] as Message[];
+
+    const groups = getMessageGroups(messages);
+
+    expect(groups.map((group) => group.type)).toEqual(["assistant"]);
+    expect(
+      groups.flatMap((group) => group.messages).map((message) => message.id),
+    ).toEqual(["ai-1"]);
   });
 });
 

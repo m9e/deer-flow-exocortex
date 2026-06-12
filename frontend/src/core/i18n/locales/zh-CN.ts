@@ -246,6 +246,8 @@ export const zhCN: Translations = {
     contactUs: "联系我们",
     about: "关于 DeerFlow",
     logout: "退出登录",
+    gatewayUnavailable: "网关暂时不可用。",
+    gatewayUnavailableRetrying: "正在后台重试…",
   },
 
   // Conversation
@@ -257,6 +259,9 @@ export const zhCN: Translations = {
   // Chats
   chats: {
     searchChats: "搜索对话",
+    loadMoreToSearch: "加载更多以搜索更早的对话",
+    loadingMore: "正在加载...",
+    loadOlderChats: "加载更早的对话",
   },
 
   // Page titles (document title)

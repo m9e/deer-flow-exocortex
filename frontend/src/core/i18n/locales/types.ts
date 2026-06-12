@@ -174,6 +174,8 @@ export interface Translations {
     contactUs: string;
     about: string;
     logout: string;
+    gatewayUnavailable: string;
+    gatewayUnavailableRetrying: string;
   };
 
   // Conversation
@@ -185,6 +187,9 @@ export interface Translations {
   // Chats
   chats: {
     searchChats: string;
+    loadMoreToSearch: string;
+    loadingMore: string;
+    loadOlderChats: string;
   };
 
   // Page titles (document title)

@@ -493,13 +493,17 @@ export function findToolCallResult(toolCallId: string, messages: Message[]) {
 }
 
 export function isHiddenFromUIMessage(message: Message) {
-  const content =
-    typeof message.content === "string" ? message.content.trim() : "";
+  const content = extractTextFromMessage(message);
   return (
     message.additional_kwargs?.hide_from_ui === true ||
     (typeof message.name === "string" &&
       HIDDEN_CONTROL_MESSAGE_NAMES.has(message.name)) ||
-    /^<system_reminder\b[^>]*>[\s\S]*<\/system_reminder>$/i.test(content)
+    /^<system_reminder\b[^>]*>[\s\S]*<\/system_reminder>$/i.test(
+      content.trim(),
+    ) ||
+    (message.type === "human" &&
+      content.includes("<slash_skill_activation>") &&
+      stripUploadedFilesTag(content).length === 0)
   );
 }
 
@@ -515,12 +519,13 @@ export interface FileInMessage {
 }
 
 /**
- * Strip <uploaded_files> tag from message content.
- * Returns the content with the tag removed.
+ * Strip backend-injected human context tags from message content.
+ * Kept under its historical name because callers use it for uploaded-file
+ * display cleanup.
  */
 export function stripUploadedFilesTag(content: string): string {
   return content
-    .replace(/<uploaded_files>[\s\S]*?<\/uploaded_files>/g, "")
+    .replace(/<(uploaded_files|slash_skill_activation)>[\s\S]*?<\/\1>/g, "")
     .trim();
 }
 
@@ -531,6 +536,7 @@ export function stripUploadedFilesTag(content: string): string {
  * These markers are *not* user copy — they come from:
  *
  * - ``UploadsMiddleware`` → ``<uploaded_files>``
+ * - ``SkillActivationMiddleware`` → ``<slash_skill_activation>``
  * - ``DynamicContextMiddleware`` → ``<system-reminder>`` (carrying
  *   ``<memory>`` / ``<current_date>`` inside)
  * - ``TodoListMiddleware`` / ``LoopDetectionMiddleware`` style reminders
@@ -544,6 +550,7 @@ export function stripUploadedFilesTag(content: string): string {
  */
 export const INTERNAL_MARKER_TAGS = [
   "uploaded_files",
+  "slash_skill_activation",
   "system-reminder",
   "memory",
   "current_date",

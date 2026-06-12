@@ -258,6 +258,8 @@ export const enUS: Translations = {
     contactUs: "Contact us",
     about: "About Kamiwaza Flow",
     logout: "Log out",
+    gatewayUnavailable: "Gateway is temporarily unavailable.",
+    gatewayUnavailableRetrying: "Retrying in the background…",
   },
 
   // Conversation
@@ -269,6 +271,9 @@ export const enUS: Translations = {
   // Chats
   chats: {
     searchChats: "Search chats",
+    loadMoreToSearch: "Load more to search older conversations",
+    loadingMore: "Loading more...",
+    loadOlderChats: "Load older chats",
   },
 
   // Page titles (document title)
